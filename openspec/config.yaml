@@ -1,0 +1,58 @@
+schema: spec-driven
+
+context: |
+  ## Project
+  旅館房間預訂網站。共 5 間相同房型的房間（101–105）。
+  旅客無需帳號，填寫姓名、Email、備注即可預訂。
+  支援查詢空房、建立訂單、以 Email 查詢訂單、取消訂單（任何時間均可取消）。
+
+  ## Tech Stack
+  - Frontend: React 19 + Vite 8（JSX，無 TypeScript），純 CSS（無 UI 框架）
+  - Backend: Node.js 20 + Express 4，CommonJS（require/module.exports）
+  - Database: PostgreSQL 16，直接使用 pg.Pool（無 ORM）
+  - Deployment: Docker Compose（db、pgadmin、api、web 四個服務）
+
+  ## Backend Conventions
+  - 路由放在 backend/src/routes/，每個資源一個檔案
+  - db.js 提供單一 pg.Pool 實例，所有 route 直接 require
+  - 建立訂單使用 transaction + SELECT FOR UPDATE 防止 race condition
+  - 所有錯誤回應格式統一：{ "error": "<繁體中文訊息>" }
+  - 日期以 DATE 型別儲存（YYYY-MM-DD 字串傳入）；overlap 判斷：check_in < existing.check_out AND check_out > existing.check_in
+
+  ## Frontend Conventions
+  - 元件放在 frontend/src/pages/，每個功能頁面一個檔案
+  - 使用 React hooks（useState、useEffect），不使用狀態管理函式庫
+  - HTTP 請求使用原生 fetch；/api/* 透過 Vite proxy 轉發至 api:3000
+  - 表單驗證在前端（UX）與後端（信任邊界）各自獨立進行
+  - 繁體中文介面；loading 狀態與錯誤訊息皆以繁體中文呈現
+
+  ## Database Schema
+  - rooms(room_number INT PK, description TEXT)
+  - bookings(id UUID PK DEFAULT gen_random_uuid(), room_number FK, guest_name VARCHAR(100),
+      guest_email VARCHAR(255), check_in DATE, check_out DATE, notes TEXT,
+      status VARCHAR(20) DEFAULT 'active'  -- active | cancelled,
+      created_at TIMESTAMPTZ DEFAULT NOW())
+
+  ## API Endpoints
+  - GET  /api/rooms/available?check_in=&check_out=
+  - POST /api/bookings
+  - GET  /api/bookings?email=
+  - DELETE /api/bookings/:id  (body: { email })
+
+  ## Environment Variables (.env)
+  DB_HOST, DB_PORT, DB_USER, DB_PASSWORD, DB_NAME
+  PGADMIN_EMAIL, PGADMIN_PASSWORD
+
+rules:
+  proposal:
+    - 以繁體中文撰寫
+    - 保持簡潔（1 頁以內）
+  specs:
+    - 以繁體中文撰寫
+    - 每個 requirement 至少包含一個正常流程與一個錯誤流程的 scenario
+  design:
+    - 以繁體中文撰寫
+    - 須包含受影響的 API 端點與 DB schema 變更
+  tasks:
+    - 以繁體中文撰寫
+    - 每個 task 應可在單一 session 內完成

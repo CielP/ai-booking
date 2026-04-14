@@ -1,57 +1,37 @@
-import { useState } from 'react';
-
-const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+import { useState, useEffect } from 'react';
 
 export default function MyBookings() {
-  const [email, setEmail] = useState('');
   const [bookings, setBookings] = useState(null);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  async function handleSearch(e) {
-    e.preventDefault();
-    setError('');
-    setBookings(null);
+  useEffect(() => {
+    fetch('/api/bookings', { credentials: 'include' })
+      .then(res => res.json().then(data => ({ ok: res.ok, data })))
+      .then(({ ok, data }) => {
+        if (!ok) throw new Error(data.error);
+        setBookings(data.bookings);
+      })
+      .catch(err => setError(err.message || '查詢失敗，請稍後再試'))
+      .finally(() => setLoading(false));
+  }, []);
 
-    if (!email.trim()) { setError('請填寫 Email'); return; }
-    if (!EMAIL_REGEX.test(email)) { setError('Email 格式無效'); return; }
-
-    setLoading(true);
-    try {
-      const res = await fetch(`/api/bookings?email=${encodeURIComponent(email)}`);
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error);
-      setBookings(data.bookings);
-    } catch (err) {
-      setError(err.message || '查詢失敗，請稍後再試');
-    } finally {
-      setLoading(false);
-    }
+  if (loading) {
+    return (
+      <div className="card" style={{ textAlign: 'center', padding: '40px', color: '#888' }}>
+        <span className="spinner" /> 載入中…
+      </div>
+    );
   }
 
   return (
     <div className="card">
-      <form onSubmit={handleSearch}>
-        <div className="form-group">
-          <label>以 Email 查詢訂單</label>
-          <input
-            type="email"
-            value={email}
-            onChange={e => setEmail(e.target.value)}
-            placeholder="輸入預訂時填寫的 Email"
-          />
-        </div>
-        {error && <div className="alert alert-error">{error}</div>}
-        <button className="btn btn-primary" type="submit" disabled={loading}>
-          {loading && <span className="spinner" />}
-          查詢訂單
-        </button>
-      </form>
+      {error && <div className="alert alert-error">{error}</div>}
 
       {bookings !== null && (
         bookings.length === 0 ? (
-          <div className="alert alert-info" style={{ marginTop: '16px' }}>
-            此 Email 無任何訂單記錄
+          <div className="alert alert-info">
+            目前尚無任何訂單記錄
           </div>
         ) : (
           <div className="booking-list">

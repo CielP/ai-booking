@@ -3,8 +3,8 @@ schema: spec-driven
 context: |
   ## Project
   旅館房間預訂網站。共 5 間相同房型的房間（101–105）。
-  旅客無需帳號，填寫姓名、Email、備注即可預訂。
-  支援查詢空房、建立訂單、以 Email 查詢訂單、取消訂單（任何時間均可取消）。
+  支援查詢空房、建立訂單、查詢訂單、取消訂單。
+  系統具備完整登入/註冊與 RBAC（角色：admin / guest）。
 
   ## Tech Stack
   - Frontend: React 19 + Vite 8（JSX，無 TypeScript），純 CSS（無 UI 框架）
@@ -12,8 +12,17 @@ context: |
   - Database: PostgreSQL 16，直接使用 pg.Pool（無 ORM）
   - Deployment: Docker Compose（db、pgadmin、api、web 四個服務）
 
+  ## Auth & RBAC
+  - JWT 以 httpOnly Cookie（名稱 `token`）傳遞；使用 jsonwebtoken + bcryptjs
+  - cookie-parser 掛載於 Express；cors 設定 `credentials: true`
+  - Middleware：authenticate（soft，不強制登入）、requireAuth（401）、requireAdmin（403）
+  - 角色：`guest`（一般用戶）與 `admin`（管理者）
+  - Admin 帳號由 docker/init.sql seed；一般用戶可公開自行註冊
+  - 匿名訪客只能使用「查詢空房」；其餘功能需登入
+
   ## Backend Conventions
   - 路由放在 backend/src/routes/，每個資源一個檔案
+  - Auth middleware 放在 backend/src/middleware/auth.js
   - db.js 提供單一 pg.Pool 實例，所有 route 直接 require
   - 建立訂單使用 transaction + SELECT FOR UPDATE 防止 race condition
   - 所有錯誤回應格式統一：{ "error": "<繁體中文訊息>" }
@@ -21,27 +30,46 @@ context: |
 
   ## Frontend Conventions
   - 元件放在 frontend/src/pages/，每個功能頁面一個檔案
-  - 使用 React hooks（useState、useEffect），不使用狀態管理函式庫
-  - HTTP 請求使用原生 fetch；/api/* 透過 Vite proxy 轉發至 api:3000
+  - 全域 auth 狀態由 frontend/src/context/AuthContext.jsx 提供（useAuth hook）
+  - 使用 React hooks（useState、useEffect、useCallback），不使用狀態管理函式庫
+  - HTTP 請求使用原生 fetch，所有受保護端點加上 `credentials: 'include'`
+  - /api/* 透過 Vite proxy 轉發至 api:3000
   - 表單驗證在前端（UX）與後端（信任邊界）各自獨立進行
   - 繁體中文介面；loading 狀態與錯誤訊息皆以繁體中文呈現
+  - App.jsx 根據 auth 狀態動態顯示 tab（匿名 / guest / admin 各不同）
 
   ## Database Schema
+  - users(id UUID PK DEFAULT gen_random_uuid(), email VARCHAR(255) UNIQUE NOT NULL,
+      password_hash VARCHAR(255) NOT NULL, name VARCHAR(100) NOT NULL,
+      role VARCHAR(20) NOT NULL DEFAULT 'guest',  -- guest | admin
+      is_active BOOLEAN NOT NULL DEFAULT true,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW())
   - rooms(room_number INT PK, description TEXT)
-  - bookings(id UUID PK DEFAULT gen_random_uuid(), room_number FK, guest_name VARCHAR(100),
-      guest_email VARCHAR(255), check_in DATE, check_out DATE, notes TEXT,
-      status VARCHAR(20) DEFAULT 'active'  -- active | cancelled,
+  - bookings(id UUID PK DEFAULT gen_random_uuid(), room_number FK, user_id UUID REFERENCES users(id),
+      guest_name VARCHAR(100), guest_email VARCHAR(255),
+      check_in DATE, check_out DATE, notes TEXT,
+      status VARCHAR(20) DEFAULT 'active',  -- active | cancelled
       created_at TIMESTAMPTZ DEFAULT NOW())
 
   ## API Endpoints
-  - GET  /api/rooms/available?check_in=&check_out=
-  - POST /api/bookings
-  - GET  /api/bookings?email=
-  - DELETE /api/bookings/:id  (body: { email })
+  - GET    /api/rooms/available?check_in=&check_out=        （公開）
+  - POST   /api/auth/register                               （公開）
+  - POST   /api/auth/login                                  （公開）
+  - POST   /api/auth/logout                                 （requireAuth）
+  - GET    /api/auth/me                                     （authenticate，無 Cookie 回 401）
+  - POST   /api/bookings                                    （requireAuth；guest_name/email 由 JWT 帶入）
+  - GET    /api/bookings                                    （requireAuth；guest 只看自己，admin 看全部）
+  - DELETE /api/bookings/:id                                （requireAuth；guest 只能刪自己的，admin 無限制）
+  - GET    /api/admin/users                                 （requireAdmin）
+  - PATCH  /api/admin/users/:id                             （requireAdmin）
+  - DELETE /api/admin/users/:id                             （requireAdmin，軟刪除）
+  - GET    /api/admin/rooms                                 （requireAdmin）
+  - PATCH  /api/admin/rooms/:room_number                    （requireAdmin）
 
   ## Environment Variables (.env)
   DB_HOST, DB_PORT, DB_USER, DB_PASSWORD, DB_NAME
   PGADMIN_EMAIL, PGADMIN_PASSWORD
+  JWT_SECRET, JWT_EXPIRES_IN, ADMIN_PASSWORD
 
 rules:
   proposal:

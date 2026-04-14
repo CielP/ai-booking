@@ -1,49 +1,44 @@
 const express = require('express');
 const router = express.Router();
 const pool = require('../db');
+const { authenticate, requireAuth } = require('../middleware/auth');
 
-const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-// GET /api/bookings?email=xxx
-router.get('/', async (req, res, next) => {
+// GET /api/bookings — 需要登入；admin 看全部，guest 只看自己的
+router.get('/', authenticate, requireAuth, async (req, res, next) => {
   try {
-    const { email } = req.query;
-
-    if (!email) {
-      return res.status(400).json({ error: '請提供 email 參數' });
+    let result;
+    if (req.user.role === 'admin') {
+      result = await pool.query(
+        `SELECT id, room_number, guest_name, guest_email, check_in, check_out, notes, status, created_at, user_id
+         FROM bookings
+         ORDER BY check_in ASC`
+      );
+    } else {
+      result = await pool.query(
+        `SELECT id, room_number, guest_name, guest_email, check_in, check_out, notes, status, created_at, user_id
+         FROM bookings
+         WHERE user_id = $1
+         ORDER BY check_in ASC`,
+        [req.user.id]
+      );
     }
-
-    if (!EMAIL_REGEX.test(email)) {
-      return res.status(400).json({ error: 'Email 格式無效' });
-    }
-
-    const result = await pool.query(
-      `SELECT id, room_number, guest_name, guest_email, check_in, check_out, notes, status, created_at
-       FROM bookings
-       WHERE guest_email = $1
-       ORDER BY check_in ASC`,
-      [email]
-    );
-
     res.json({ bookings: result.rows });
   } catch (err) {
     next(err);
   }
 });
 
-// POST /api/bookings
-router.post('/', async (req, res, next) => {
+// POST /api/bookings — 需要登入；姓名/email 由 JWT 帶入
+router.post('/', authenticate, requireAuth, async (req, res, next) => {
   const client = await pool.connect();
   try {
-    const { guest_name, guest_email, room_number, check_in, check_out, notes } = req.body;
+    const { room_number, check_in, check_out, notes } = req.body;
+    const guest_name = req.user.name;
+    const guest_email = req.user.email;
+    const user_id = req.user.id;
 
-    // Validate required fields
-    if (!guest_name || !guest_email || !room_number || !check_in || !check_out) {
-      return res.status(400).json({ error: '姓名、Email、房間號碼、入住日期、退房日期為必填欄位' });
-    }
-
-    if (!EMAIL_REGEX.test(guest_email)) {
-      return res.status(400).json({ error: 'Email 格式無效' });
+    if (!room_number || !check_in || !check_out) {
+      return res.status(400).json({ error: '房間號碼、入住日期、退房日期為必填欄位' });
     }
 
     const inDate = new Date(check_in);
@@ -59,7 +54,6 @@ router.post('/', async (req, res, next) => {
 
     await client.query('BEGIN');
 
-    // Check room exists
     const roomCheck = await client.query(
       'SELECT room_number FROM rooms WHERE room_number = $1',
       [room_number]
@@ -69,7 +63,6 @@ router.post('/', async (req, res, next) => {
       return res.status(404).json({ error: `房間 ${room_number} 不存在` });
     }
 
-    // Check for booking conflicts (lock conflicting rows)
     const conflict = await client.query(
       `SELECT id FROM bookings
        WHERE room_number = $1
@@ -85,12 +78,11 @@ router.post('/', async (req, res, next) => {
       return res.status(409).json({ error: `房間 ${room_number} 在該日期區間已被預訂` });
     }
 
-    // Create booking
     const result = await client.query(
-      `INSERT INTO bookings (room_number, guest_name, guest_email, check_in, check_out, notes)
-       VALUES ($1, $2, $3, $4, $5, $6)
+      `INSERT INTO bookings (room_number, guest_name, guest_email, check_in, check_out, notes, user_id)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)
        RETURNING id, room_number, guest_name, guest_email, check_in, check_out, notes, status, created_at`,
-      [room_number, guest_name, guest_email, check_in, check_out, notes || null]
+      [room_number, guest_name, guest_email, check_in, check_out, notes || null, user_id]
     );
 
     await client.query('COMMIT');
@@ -103,19 +95,13 @@ router.post('/', async (req, res, next) => {
   }
 });
 
-// DELETE /api/bookings/:id
-router.delete('/:id', async (req, res, next) => {
+// DELETE /api/bookings/:id — 需要登入；guest 只能取消自己的，admin 可取消任何
+router.delete('/:id', authenticate, requireAuth, async (req, res, next) => {
   try {
     const { id } = req.params;
-    const { email } = req.body;
 
-    if (!email) {
-      return res.status(400).json({ error: '請提供 email 以驗證身份' });
-    }
-
-    // Find booking
     const found = await pool.query(
-      'SELECT id, guest_email, status FROM bookings WHERE id = $1',
+      'SELECT id, user_id, status FROM bookings WHERE id = $1',
       [id]
     );
 
@@ -125,8 +111,8 @@ router.delete('/:id', async (req, res, next) => {
 
     const booking = found.rows[0];
 
-    if (booking.guest_email !== email) {
-      return res.status(403).json({ error: '無權取消此訂單，Email 不符合' });
+    if (req.user.role !== 'admin' && booking.user_id !== req.user.id) {
+      return res.status(403).json({ error: '無權取消此訂單' });
     }
 
     if (booking.status === 'cancelled') {

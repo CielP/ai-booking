@@ -4,7 +4,8 @@
       "Bash(openspec status:*)",
       "Bash(openspec instructions:*)",
       "Bash(npm create:*)",
-      "Bash(docker compose:*)"
+      "Bash(docker compose:*)",
+      "Bash(openspec new:*)"
     ]
   }
 }

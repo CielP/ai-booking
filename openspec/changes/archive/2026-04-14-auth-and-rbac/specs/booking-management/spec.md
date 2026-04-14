@@ -1,10 +1,4 @@
-# Booking Management
-
-## Purpose
-
-TBD — defines how the system handles creating, querying, and cancelling guest bookings.
-
-## Requirements
+## MODIFIED Requirements
 
 ### Requirement: 建立訂單
 系統 SHALL 允許已登入用戶（guest 或 admin）選擇房間與日期後建立訂單，並回傳唯一訂單編號（UUID）。建立前系統 MUST 驗證該房間在指定日期區間仍為可用狀態。訂單 MUST 關聯至登入用戶的 user_id。姓名與 Email 由 JWT 自動帶入，不可由請求 body 覆蓋。
@@ -70,3 +64,9 @@ TBD — defines how the system handles creating, querying, and cancelling guest 
 #### Scenario: 訂單已取消
 - **WHEN** 用戶嘗試取消一個狀態已為 cancelled 的訂單
 - **THEN** 系統回傳 409 錯誤，說明訂單已取消
+
+## REMOVED Requirements
+
+### Requirement: 以 Email 查詢訂單
+**Reason**: 改為基於 JWT 身份驗證的查詢方式，無需再輸入 Email。Email-only 查詢無法驗證身份，存在安全疑慮。
+**Migration**: 前端「我的訂單」頁面改為直接呼叫 GET /api/bookings（帶 JWT Cookie），後端依 role 決定回傳範圍。

@@ -1,3 +1,13 @@
+CREATE TABLE users (
+  id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  email         VARCHAR(255) UNIQUE NOT NULL,
+  password_hash VARCHAR(255) NOT NULL,
+  name          VARCHAR(100) NOT NULL,
+  role          VARCHAR(20) NOT NULL DEFAULT 'guest',
+  is_active     BOOLEAN NOT NULL DEFAULT true,
+  created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
 CREATE TABLE rooms (
   room_number INT PRIMARY KEY,
   description TEXT
@@ -13,11 +23,13 @@ CREATE TABLE bookings (
   notes        TEXT,
   status       VARCHAR(20) NOT NULL DEFAULT 'active',
   created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  user_id      UUID REFERENCES users(id),
   CONSTRAINT chk_dates CHECK (check_out > check_in)
 );
 
 CREATE INDEX idx_bookings_email ON bookings(guest_email);
 CREATE INDEX idx_bookings_room_dates ON bookings(room_number, check_in, check_out);
+CREATE INDEX idx_bookings_user_id ON bookings(user_id);
 
 INSERT INTO rooms (room_number, description) VALUES
   (101, '標準雙人房'),
@@ -25,3 +37,9 @@ INSERT INTO rooms (room_number, description) VALUES
   (103, '標準雙人房'),
   (104, '標準雙人房'),
   (105, '標準雙人房');
+
+-- 預設 admin 帳號：admin@hotel.com / admin123456
+-- 如需更換密碼，請重新產生 bcrypt hash 並替換下方的 password_hash 值
+-- 重建方式：docker compose down -v && docker compose up --build -d
+INSERT INTO users (email, password_hash, name, role) VALUES
+  ('admin@hotel.com', '$2b$10$PbjyM3vGDYZZQJ3ct4G0qOHkOnysdWhycvIEQV5/RncDN9IFCD.CS', '系統管理員', 'admin');

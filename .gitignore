@@ -30,4 +30,7 @@ Thumbs.db
 # Docker volumes (if mapped locally)
 pgdata/
 
-# .claude and openspec are intentionally tracked in version control
+# Claude Code — local settings are machine-specific
+.claude/settings.local.json
+
+# .claude (commands/skills) and openspec are intentionally tracked in version control

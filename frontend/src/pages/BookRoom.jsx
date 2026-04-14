@@ -1,13 +1,11 @@
 import { useState, useEffect } from 'react';
-
-const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+import { useAuth } from '../context/AuthContext.jsx';
 
 export default function BookRoom({ prefill, onBooked }) {
+  const { user } = useAuth();
   const today = new Date().toISOString().split('T')[0];
 
   const [form, setForm] = useState({
-    guest_name: '',
-    guest_email: '',
     room_number: '',
     check_in: '',
     check_out: '',
@@ -33,9 +31,6 @@ export default function BookRoom({ prefill, onBooked }) {
 
   function validate() {
     const e = {};
-    if (!form.guest_name.trim()) e.guest_name = '請填寫姓名';
-    if (!form.guest_email.trim()) e.guest_email = '請填寫 Email';
-    else if (!EMAIL_REGEX.test(form.guest_email)) e.guest_email = 'Email 格式無效';
     if (!form.room_number) e.room_number = '請填寫房間號碼';
     if (!form.check_in) e.check_in = '請填寫入住日期';
     if (!form.check_out) e.check_out = '請填寫退房日期';
@@ -55,12 +50,13 @@ export default function BookRoom({ prefill, onBooked }) {
       const res = await fetch('/api/bookings', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({ ...form, room_number: parseInt(form.room_number) }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
       setSuccess(data.booking);
-      setForm({ guest_name: '', guest_email: '', room_number: '', check_in: '', check_out: '', notes: '' });
+      setForm({ room_number: '', check_in: '', check_out: '', notes: '' });
       if (onBooked) onBooked(data.booking);
     } catch (err) {
       setApiError(err.message || '預訂失敗，請稍後再試');
@@ -96,17 +92,12 @@ export default function BookRoom({ prefill, onBooked }) {
 
   return (
     <div className="card">
+      {user && (
+        <div style={{ background: '#f0f9ff', border: '1px solid #bae6fd', borderRadius: '6px', padding: '10px 14px', marginBottom: '16px', fontSize: '0.9rem' }}>
+          預訂人：<strong>{user.name}</strong>（{user.email}）
+        </div>
+      )}
       <form onSubmit={handleSubmit}>
-        <div className="form-group">
-          <label>姓名 *</label>
-          <input value={form.guest_name} onChange={e => setForm({...form, guest_name: e.target.value})} placeholder="旅客姓名" />
-          {errors.guest_name && <span style={{ color: '#dc2626', fontSize: '0.82rem' }}>{errors.guest_name}</span>}
-        </div>
-        <div className="form-group">
-          <label>Email *</label>
-          <input type="email" value={form.guest_email} onChange={e => setForm({...form, guest_email: e.target.value})} placeholder="example@email.com" />
-          {errors.guest_email && <span style={{ color: '#dc2626', fontSize: '0.82rem' }}>{errors.guest_email}</span>}
-        </div>
         <div className="form-group">
           <label>房間號碼 *</label>
           <select value={form.room_number} onChange={e => setForm({...form, room_number: e.target.value})}>

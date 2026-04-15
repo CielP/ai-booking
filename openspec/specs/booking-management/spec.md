@@ -45,7 +45,7 @@ TBD — defines how the system handles creating, querying, and cancelling guest 
 - **THEN** 系統回傳 401 錯誤
 
 ### Requirement: 取消訂單
-系統 SHALL 允許已登入用戶取消自己名下的訂單（user_id 對應）；admin 可取消任意訂單。取消後訂單狀態改為 `cancelled`，不可再次取消。
+系統 SHALL 允許已登入用戶透過「我的訂單」頁面的訂單卡片取消自己名下的訂單（user_id 對應）；admin 可取消任意訂單。取消後訂單狀態改為 `cancelled`，不可再次取消。取消入口 MUST 整合於訂單清單中，不提供獨立的「取消訂單」分頁。
 
 #### Scenario: Guest 成功取消自己的訂單
 - **WHEN** 已登入 guest 呼叫 DELETE /api/bookings/:id，且該訂單的 user_id 與登入用戶相符，狀態為 active

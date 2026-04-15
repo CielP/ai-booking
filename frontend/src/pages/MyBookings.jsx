@@ -4,6 +4,8 @@ export default function MyBookings() {
   const [bookings, setBookings] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [cancellingId, setCancellingId] = useState(null);
+  const [cancelError, setCancelError] = useState('');
 
   useEffect(() => {
     fetch('/api/bookings', { credentials: 'include' })
@@ -16,6 +18,25 @@ export default function MyBookings() {
       .finally(() => setLoading(false));
   }, []);
 
+  async function handleCancel(id) {
+    if (!window.confirm('確定要取消此訂單嗎？')) return;
+    setCancelError('');
+    setCancellingId(id);
+    try {
+      const res = await fetch(`/api/bookings/${encodeURIComponent(id)}`, {
+        method: 'DELETE',
+        credentials: 'include',
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      setBookings(prev => prev.map(b => b.id === id ? { ...b, status: 'cancelled' } : b));
+    } catch (err) {
+      setCancelError(err.message || '取消失敗，請稍後再試');
+    } finally {
+      setCancellingId(null);
+    }
+  }
+
   if (loading) {
     return (
       <div className="card" style={{ textAlign: 'center', padding: '40px', color: '#888' }}>
@@ -27,6 +48,7 @@ export default function MyBookings() {
   return (
     <div className="card">
       {error && <div className="alert alert-error">{error}</div>}
+      {cancelError && <div className="alert alert-error">{cancelError}</div>}
 
       {bookings !== null && (
         bookings.length === 0 ? (
@@ -49,6 +71,18 @@ export default function MyBookings() {
                   <div>入住：{b.check_in} ／ 退房：{b.check_out}</div>
                   {b.notes && <div>備注：{b.notes}</div>}
                 </div>
+                {b.status === 'active' && (
+                  <div style={{ marginTop: '10px', textAlign: 'right' }}>
+                    <button
+                      className="btn btn-danger"
+                      onClick={() => handleCancel(b.id)}
+                      disabled={cancellingId === b.id}
+                    >
+                      {cancellingId === b.id && <span className="spinner" />}
+                      取消訂單
+                    </button>
+                  </div>
+                )}
               </div>
             ))}
           </div>

@@ -3,7 +3,6 @@ import { useAuth } from './context/AuthContext.jsx';
 import AvailableRooms from './pages/AvailableRooms';
 import BookRoom from './pages/BookRoom';
 import MyBookings from './pages/MyBookings';
-import CancelBooking from './pages/CancelBooking';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import AdminDashboard from './pages/AdminDashboard';
@@ -41,7 +40,6 @@ export default function App() {
     { id: 'available', label: '查詢空房', show: true },
     { id: 'book',      label: '預訂房間', show: !!user },
     { id: 'mybookings',label: '我的訂單', show: !!user },
-    { id: 'cancel',    label: '取消訂單', show: !!user },
     { id: 'admin',     label: '管理後台', show: user?.role === 'admin' },
   ].filter(t => t.show);
 
@@ -84,7 +82,6 @@ export default function App() {
       {validTab === 'available'  && <AvailableRooms onBook={user ? handleBook : null} />}
       {validTab === 'book'       && <BookRoom prefill={bookPrefill} />}
       {validTab === 'mybookings' && <MyBookings />}
-      {validTab === 'cancel'     && <CancelBooking />}
       {validTab === 'admin'      && <AdminDashboard />}
       {validTab === 'login'      && <Login onLogin={() => setActiveTab('available')} />}
       {validTab === 'register'   && <Register onRegister={() => setActiveTab('available')} />}

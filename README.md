@@ -60,6 +60,7 @@ The database schema and seed data (including the admin account) are applied auto
 
 ### Anonymous visitor
 - Browse available rooms only; all other actions require login
+- Login and Register buttons are in the top-right header
 
 ## Project Structure
 
@@ -79,7 +80,7 @@ The database schema and seed data (including the admin account) are applied auto
 ├── frontend/
 │   └── src/
 │       ├── main.jsx
-│       ├── App.jsx               # Tab layout, dynamic per role
+│       ├── App.jsx               # Tab layout (per role) + header auth buttons
 │       ├── context/
 │       │   └── AuthContext.jsx   # Global auth state (useAuth hook)
 │       ├── pages/

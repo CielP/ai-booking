@@ -27,7 +27,8 @@ Thumbs.db
 *.suo
 *.sw?
 
-# Docker volumes (if mapped locally)
+# Docker — named volumes are managed by Docker, not stored locally
+# (pg_data is a named volume in docker-compose.yml, not a bind mount)
 pgdata/
 
 # Claude Code — local settings are machine-specific

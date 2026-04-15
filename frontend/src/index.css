@@ -172,6 +172,14 @@ textarea { resize: vertical; min-height: 80px; }
 }
 .btn-logout:hover { background: #f3f4f6; }
 
+.auth-actions { display: flex; align-items: center; gap: 8px; }
+.btn-auth-outline {
+  padding: 6px 16px; border: 1px solid #2563eb; border-radius: 6px;
+  background: #fff; color: #2563eb; cursor: pointer; font-size: 0.9rem;
+  font-family: inherit; transition: background 0.2s, color 0.2s;
+}
+.btn-auth-outline:hover { background: #2563eb; color: #fff; }
+
 /* Auth pages */
 .auth-card { max-width: 400px; margin: 0 auto; }
 .auth-title { font-size: 1.2rem; margin-bottom: 20px; color: #1a1a2e; }

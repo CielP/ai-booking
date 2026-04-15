@@ -36,7 +36,8 @@ context: |
   - /api/* 透過 Vite proxy 轉發至 api:3000
   - 表單驗證在前端（UX）與後端（信任邊界）各自獨立進行
   - 繁體中文介面；loading 狀態與錯誤訊息皆以繁體中文呈現
-  - App.jsx 根據 auth 狀態動態顯示 tab（匿名 / guest / admin 各不同）
+  - App.jsx 根據 auth 狀態動態顯示 tab：匿名只有「查詢空房」；guest 有「查詢空房、預訂、我的訂單、取消訂單」；admin 在 guest tabs 基礎上加「管理後台」
+  - 登入/註冊入口位於 header 右上角（非 tab 列）：未登入時顯示「登入」「註冊」按鈕；已登入時顯示用戶姓名、角色標籤（admin）、登出按鈕
 
   ## Database Schema
   - users(id UUID PK DEFAULT gen_random_uuid(), email VARCHAR(255) UNIQUE NOT NULL,

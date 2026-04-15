@@ -1,16 +1,42 @@
-# React + Vite
+# Frontend — Hotel Room Booking
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+React 19 + Vite 8 single-page app. Part of the `ai-booking` Docker Compose stack.
 
-Currently, two official plugins are available:
+## Development
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+The frontend is built into a Docker image and served via Vite dev server. Run from the project root:
 
-## React Compiler
+```bash
+docker compose up --build -d web
+docker compose logs -f web
+```
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+The Vite dev server proxies `/api/*` → `http://api:3000` (Docker internal hostname).
 
-## Expanding the ESLint configuration
+## Structure
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+```
+src/
+├── main.jsx
+├── App.jsx                  # Tab layout (per role) + header auth buttons
+├── index.css                # All styles (no CSS framework)
+├── context/
+│   └── AuthContext.jsx      # Global auth state via useAuth() hook
+└── pages/
+    ├── AvailableRooms.jsx
+    ├── BookRoom.jsx
+    ├── MyBookings.jsx
+    ├── CancelBooking.jsx
+    ├── Login.jsx
+    ├── Register.jsx
+    └── AdminDashboard.jsx
+```
+
+## Auth State
+
+`useAuth()` returns `{ user, login, logout }`:
+- `user === undefined` — loading (initial fetch to `/api/auth/me` in progress)
+- `user === null` — anonymous
+- `user === { id, name, email, role }` — logged in
+
+All protected `fetch` calls include `credentials: 'include'` to send the JWT cookie.

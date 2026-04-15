@@ -43,22 +43,29 @@ export default function App() {
     { id: 'mybookings',label: '我的訂單', show: !!user },
     { id: 'cancel',    label: '取消訂單', show: !!user },
     { id: 'admin',     label: '管理後台', show: user?.role === 'admin' },
-    { id: 'login',     label: '登入',     show: !user },
-    { id: 'register',  label: '註冊',     show: !user },
   ].filter(t => t.show);
 
   // 如果目前 tab 對登入狀態不適用，回到 available
-  const validTab = tabs.find(t => t.id === activeTab) ? activeTab : 'available';
+  // login/register 不在 tabs 中但仍為有效的 activeTab（由 header 按鈕觸發）
+  const authPages = ['login', 'register'];
+  const validTab = tabs.find(t => t.id === activeTab) || (!user && authPages.includes(activeTab))
+    ? activeTab
+    : 'available';
 
   return (
     <div className="app">
       <div className="app-header">
         <h1>🏨 旅館訂房系統</h1>
-        {user && (
+        {user ? (
           <div className="user-info">
             <span className="user-name">{user.name}</span>
             {user.role === 'admin' && <span className="role-badge">管理者</span>}
             <button className="btn btn-logout" onClick={handleLogout}>登出</button>
+          </div>
+        ) : (
+          <div className="auth-actions">
+            <button className="btn btn-auth-outline" onClick={() => setActiveTab('login')}>登入</button>
+            <button className="btn btn-primary" onClick={() => setActiveTab('register')}>註冊</button>
           </div>
         )}
       </div>

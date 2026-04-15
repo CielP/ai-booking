@@ -63,9 +63,11 @@ All routes return `{ error: "<message>" }` on failure. Date overlap logic: a con
 **Auth context**: [frontend/src/context/AuthContext.jsx](frontend/src/context/AuthContext.jsx) — provides `{ user, login, logout }` via `useAuth()` hook; `user === undefined` means loading, `null` means anonymous
 
 App is a single-page tab layout. Visible tabs depend on auth state:
-- **Anonymous**: 查詢空房, 登入, 註冊
-- **Guest**: 查詢空房, 預訂, 我的訂單, 取消訂單, 登出
+- **Anonymous**: 查詢空房
+- **Guest**: 查詢空房, 預訂房間, 我的訂單, 取消訂單
 - **Admin**: all guest tabs + 管理後台
+
+Header right side (not tabs): anonymous shows 登入 (outline) + 註冊 (primary) buttons; logged-in shows user name, role badge (admin only), and 登出 button.
 
 Pages under [frontend/src/pages/](frontend/src/pages/):
 - `AvailableRooms.jsx` — date search → room grid; clicking a room prefills BookRoom

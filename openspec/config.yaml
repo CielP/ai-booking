@@ -9,7 +9,9 @@ context: |
   ## Tech Stack
   - Frontend: React 19 + Vite 8（JSX，無 TypeScript），純 CSS（無 UI 框架）
   - Backend: Node.js 20 + Express 4，CommonJS（require/module.exports）
-  - Database: PostgreSQL 16，直接使用 pg.Pool（無 ORM）
+  - Database: PostgreSQL 16 + pgvector（image: pgvector/pgvector:pg16），直接使用 pg.Pool（無 ORM）
+  - LLM: Claude claude-sonnet-4-20250514 via @anthropic-ai/sdk，SSE 串流回覆
+  - Embedding: OpenAI text-embedding-3-small（1536 維度）via openai SDK
   - Deployment: Docker Compose（db、pgadmin、api、web 四個服務）
 
   ## Auth & RBAC
@@ -22,6 +24,8 @@ context: |
 
   ## Backend Conventions
   - 路由放在 backend/src/routes/，每個資源一個檔案
+  - 服務層放在 backend/src/services/（embedding.js、rag.js）
+  - System prompt 模板放在 backend/src/prompts/system.md，支援動態變數注入（{{user_name}}、{{current_page}}、{{prefill_date}}、{{knowledge_context}}）
   - Auth middleware 放在 backend/src/middleware/auth.js
   - db.js 提供單一 pg.Pool 實例，所有 route 直接 require
   - 建立訂單使用 transaction + SELECT FOR UPDATE 防止 race condition
@@ -29,14 +33,17 @@ context: |
   - 日期以 DATE 型別儲存（YYYY-MM-DD 字串傳入）；overlap 判斷：check_in < existing.check_out AND check_out > existing.check_in
 
   ## Frontend Conventions
-  - 元件放在 frontend/src/pages/，每個功能頁面一個檔案
+  - 頁面元件放在 frontend/src/pages/，每個功能頁面一個檔案
+  - 共用元件放在 frontend/src/components/（ChatWidget.jsx 等）
   - 全域 auth 狀態由 frontend/src/context/AuthContext.jsx 提供（useAuth hook）
   - 使用 React hooks（useState、useEffect、useCallback），不使用狀態管理函式庫
   - HTTP 請求使用原生 fetch，所有受保護端點加上 `credentials: 'include'`
   - /api/* 透過 Vite proxy 轉發至 api:3000
   - 表單驗證在前端（UX）與後端（信任邊界）各自獨立進行
   - 繁體中文介面；loading 狀態與錯誤訊息皆以繁體中文呈現
-  - App.jsx 根據 auth 狀態動態顯示 tab：匿名只有「查詢空房」；guest 有「查詢空房、預訂、我的訂單、取消訂單」；admin 在 guest tabs 基礎上加「管理後台」
+  - App.jsx 根據 auth 狀態動態顯示 tab：匿名只有「查詢空房」；guest 有「查詢空房、預訂房間、我的訂單」；admin 在 guest tabs 基礎上加「管理後台」
+  - 取消訂單功能已整合至「我的訂單」頁面（每張 active 訂單卡片上有取消按鈕），無獨立取消分頁
+  - admin 登入後頁面右下角顯示浮動聊天視窗（ChatWidget），支援 AI 客服對話（SSE 串流）
   - 登入/註冊入口位於 header 右上角（非 tab 列）：未登入時顯示「登入」「註冊」按鈕；已登入時顯示用戶姓名、角色標籤（admin）、登出按鈕
 
   ## Database Schema
@@ -51,6 +58,10 @@ context: |
       check_in DATE, check_out DATE, notes TEXT,
       status VARCHAR(20) DEFAULT 'active',  -- active | cancelled
       created_at TIMESTAMPTZ DEFAULT NOW())
+  - knowledge_chunks(id UUID PK DEFAULT gen_random_uuid(), title VARCHAR(200) UNIQUE NOT NULL,
+      content TEXT, embedding vector(1536),
+      created_at TIMESTAMPTZ DEFAULT NOW(), updated_at TIMESTAMPTZ DEFAULT NOW())
+    — HNSW index on embedding（cosine distance）；用於 RAG 語義搜尋
 
   ## API Endpoints
   - GET    /api/rooms/available?check_in=&check_out=        （公開）
@@ -61,6 +72,13 @@ context: |
   - POST   /api/bookings                                    （requireAuth；guest_name/email 由 JWT 帶入）
   - GET    /api/bookings                                    （requireAuth；guest 只看自己，admin 看全部）
   - DELETE /api/bookings/:id                                （requireAuth；guest 只能刪自己的，admin 無限制）
+  - POST   /api/chat                                        （requireAdmin；SSE 串流，RAG + Claude + tool use）
+  - GET    /api/admin/knowledge                             （requireAdmin；列出所有 chunks，不含 embedding）
+  - POST   /api/admin/knowledge                             （requireAdmin；新增 chunk，自動產生 embedding）
+  - PATCH  /api/admin/knowledge/:id                         （requireAdmin；更新 chunk，自動重新 embedding）
+  - DELETE /api/admin/knowledge/:id                         （requireAdmin）
+  - POST   /api/admin/knowledge/import                      （requireAdmin；H2 分割 Markdown，UPSERT ON CONFLICT(title)）
+  - POST   /api/admin/knowledge/reembed                     （requireAdmin；重新產生所有 embedding）
   - GET    /api/admin/users                                 （requireAdmin）
   - PATCH  /api/admin/users/:id                             （requireAdmin）
   - DELETE /api/admin/users/:id                             （requireAdmin，軟刪除）
@@ -71,6 +89,7 @@ context: |
   DB_HOST, DB_PORT, DB_USER, DB_PASSWORD, DB_NAME
   PGADMIN_EMAIL, PGADMIN_PASSWORD
   JWT_SECRET, JWT_EXPIRES_IN, ADMIN_PASSWORD
+  ANTHROPIC_API_KEY, OPENAI_API_KEY
 
 rules:
   proposal:

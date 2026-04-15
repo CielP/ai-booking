@@ -7,6 +7,8 @@ const roomsRouter = require('./routes/rooms');
 const bookingsRouter = require('./routes/bookings');
 const authRouter = require('./routes/auth');
 const adminRouter = require('./routes/admin');
+const knowledgeRouter = require('./routes/knowledge');
+const chatRouter = require('./routes/chat');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -19,6 +21,8 @@ app.use('/api/auth', authRouter);
 app.use('/api/rooms', roomsRouter);
 app.use('/api/bookings', bookingsRouter);
 app.use('/api/admin', adminRouter);
+app.use('/api/admin/knowledge', knowledgeRouter);
+app.use('/api/chat', chatRouter);
 
 // Global error handler
 app.use((err, req, res, next) => {

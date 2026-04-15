@@ -1,16 +1,18 @@
 # AI Booking — Hotel Room Booking System
 
-A full-stack hotel room booking web app for a 5-room hotel (rooms 101–105). Features user authentication, role-based access control, and an admin dashboard.
+A full-stack hotel room booking web app for a 5-room hotel (rooms 101–105). Features user authentication, role-based access control, an admin dashboard, and an AI customer service chatbot powered by Claude + RAG.
 
 ## Tech Stack
 
-| Layer    | Technology |
-|----------|-----------|
-| Frontend | React 19 + Vite 8, plain CSS |
-| Backend  | Node.js 20 + Express 4 |
-| Database | PostgreSQL 16 |
-| Auth     | JWT (httpOnly Cookie) + bcrypt |
-| Infra    | Docker Compose |
+| Layer      | Technology |
+|------------|------------|
+| Frontend   | React 19 + Vite 8, plain CSS |
+| Backend    | Node.js 20 + Express 4 |
+| Database   | PostgreSQL 16 + pgvector |
+| LLM        | Claude (Anthropic SDK) |
+| Embedding  | OpenAI text-embedding-3-small |
+| Auth       | JWT (httpOnly Cookie) + bcrypt |
+| Infra      | Docker Compose |
 
 ## Getting Started
 
@@ -49,7 +51,7 @@ The database schema and seed data (including the admin account) are applied auto
 - Browse available rooms by date range
 - Book a room (name/email auto-filled from account)
 - View own booking history
-- Cancel own bookings
+- Cancel own bookings (inline button on each active booking)
 
 ### Admin
 - All guest features
@@ -57,6 +59,8 @@ The database schema and seed data (including the admin account) are applied auto
 - Cancel any booking
 - Manage user accounts (change role, enable/disable)
 - Edit room descriptions
+- AI customer service chatbot (floating chat widget, Claude + RAG)
+- Manage knowledge base (CRUD, Markdown import, re-embed)
 
 ### Anonymous visitor
 - Browse available rooms only; all other actions require login
@@ -72,28 +76,36 @@ The database schema and seed data (including the admin account) are applied auto
 │       ├── db.js                 # pg.Pool instance
 │       ├── middleware/
 │       │   └── auth.js           # authenticate / requireAuth / requireAdmin
+│       ├── services/
+│       │   ├── embedding.js      # OpenAI embedding wrapper
+│       │   └── rag.js            # pgvector cosine similarity search
+│       ├── prompts/
+│       │   └── system.md         # Claude system prompt template
 │       └── routes/
 │           ├── auth.js           # /api/auth/*
 │           ├── bookings.js       # /api/bookings/*
 │           ├── rooms.js          # /api/rooms/*
-│           └── admin.js          # /api/admin/*
+│           ├── admin.js          # /api/admin/users, /api/admin/rooms
+│           ├── knowledge.js      # /api/admin/knowledge/*
+│           └── chat.js           # /api/chat (SSE)
 ├── frontend/
 │   └── src/
 │       ├── main.jsx
 │       ├── App.jsx               # Tab layout (per role) + header auth buttons
 │       ├── context/
 │       │   └── AuthContext.jsx   # Global auth state (useAuth hook)
+│       ├── components/
+│       │   └── ChatWidget.jsx    # Floating AI chat (admin-only, SSE)
 │       ├── pages/
 │       │   ├── AvailableRooms.jsx
 │       │   ├── BookRoom.jsx
-│       │   ├── MyBookings.jsx
-│       │   ├── CancelBooking.jsx
+│       │   ├── MyBookings.jsx    # Includes inline cancel
 │       │   ├── Login.jsx
 │       │   ├── Register.jsx
-│       │   └── AdminDashboard.jsx
+│       │   └── AdminDashboard.jsx # 4 sub-tabs incl. knowledge mgmt
 │       └── index.css
 ├── docker/
-│   └── init.sql                  # Schema + seed data
+│   └── init.sql                  # Schema + seed data (incl. pgvector)
 ├── docker-compose.yml
 └── .env.example
 ```

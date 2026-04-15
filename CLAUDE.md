@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What This Repo Is
 
-A hotel room booking website for a 5-room hotel (rooms 101–105). Built with React (Vite) frontend, Express backend, and PostgreSQL — all orchestrated via Docker Compose. The system has full user authentication (JWT + httpOnly Cookie) and RBAC (roles: `admin` / `guest`). The repo also uses **OpenSpec**, a spec-driven workflow framework for AI-assisted development.
+A hotel room booking website for a 5-room hotel (rooms 101–105). Built with React (Vite) frontend, Express backend, and PostgreSQL + pgvector — all orchestrated via Docker Compose. The system has full user authentication (JWT + httpOnly Cookie) and RBAC (roles: `admin` / `guest`). It includes an AI customer service chatbot (admin-only) powered by Claude + RAG with a pgvector-backed knowledge base. The repo also uses **OpenSpec**, a spec-driven workflow framework for AI-assisted development.
 
 ## Running the Application
 
@@ -32,7 +32,9 @@ Copy `.env.example` to `.env` before first run. The database is initialized auto
 
 **Entry point**: [backend/src/index.js](backend/src/index.js)  
 **DB connection pool**: [backend/src/db.js](backend/src/db.js) — uses `pg.Pool`, reads `DB_*` env vars  
-**Auth middleware**: [backend/src/middleware/auth.js](backend/src/middleware/auth.js) — `authenticate` (soft), `requireAuth` (401), `requireAdmin` (403)
+**Auth middleware**: [backend/src/middleware/auth.js](backend/src/middleware/auth.js) — `authenticate` (soft), `requireAuth` (401), `requireAdmin` (403)  
+**Services**: [backend/src/services/](backend/src/services/) — `embedding.js` (OpenAI text-embedding-3-small wrapper), `rag.js` (pgvector cosine similarity search)  
+**System prompt**: [backend/src/prompts/system.md](backend/src/prompts/system.md) — Claude system prompt template with `{{user_name}}`, `{{current_page}}`, `{{prefill_date}}`, `{{knowledge_context}}` placeholders
 
 **Auth routes** (`backend/src/routes/auth.js`):
 - `POST /api/auth/register` — creates guest account; sets JWT httpOnly cookie on success
@@ -55,6 +57,17 @@ Copy `.env.example` to `.env` before first run. The database is initialized auto
 **Room routes** (`backend/src/routes/rooms.js`), public:
 - `GET /api/rooms/available?check_in=YYYY-MM-DD&check_out=YYYY-MM-DD` — returns rooms not conflicting with active bookings
 
+**Knowledge routes** (`backend/src/routes/knowledge.js`), all require `requireAdmin`:
+- `GET /api/admin/knowledge` — list all chunks (without embedding column)
+- `POST /api/admin/knowledge` — create chunk; auto-generates embedding
+- `PATCH /api/admin/knowledge/:id` — update chunk; auto-regenerates embedding
+- `DELETE /api/admin/knowledge/:id` — delete chunk
+- `POST /api/admin/knowledge/import` — split Markdown by H2 headings, UPSERT on title
+- `POST /api/admin/knowledge/reembed` — regenerate embeddings for all chunks
+
+**Chat route** (`backend/src/routes/chat.js`), requires `requireAdmin`:
+- `POST /api/chat` — SSE streaming endpoint; RAG search → Claude with tool use (`check_availability`) → streamed response; events: `{type:"text",content:"..."}`, `{type:"done"}`
+
 All routes return `{ error: "<message>" }` on failure. Date overlap logic: a conflict exists when `check_in < existing.check_out AND check_out > existing.check_in` (adjacent bookings are allowed).
 
 ## Frontend
@@ -64,28 +77,33 @@ All routes return `{ error: "<message>" }` on failure. Date overlap logic: a con
 
 App is a single-page tab layout. Visible tabs depend on auth state:
 - **Anonymous**: 查詢空房
-- **Guest**: 查詢空房, 預訂房間, 我的訂單, 取消訂單
+- **Guest**: 查詢空房, 預訂房間, 我的訂單
 - **Admin**: all guest tabs + 管理後台
+
+Admin users also see a floating chat widget (bottom-right) for AI customer service.
 
 Header right side (not tabs): anonymous shows 登入 (outline) + 註冊 (primary) buttons; logged-in shows user name, role badge (admin only), and 登出 button.
 
 Pages under [frontend/src/pages/](frontend/src/pages/):
 - `AvailableRooms.jsx` — date search → room grid; clicking a room prefills BookRoom
 - `BookRoom.jsx` — booking form; name/email auto-filled from JWT (not editable); accepts `prefill` prop `{ room, checkIn, checkOut }` from AvailableRooms
-- `MyBookings.jsx` — auto-fetches own bookings via JWT cookie on mount
-- `CancelBooking.jsx` — cancel by booking UUID; ownership verified server-side via JWT
+- `MyBookings.jsx` — auto-fetches own bookings via JWT cookie on mount; each active booking card has an inline cancel button (uses `window.confirm` + `DELETE /api/bookings/:id`)
 - `Login.jsx` — email + password form
 - `Register.jsx` — name + email + password form (password ≥ 8 chars)
-- `AdminDashboard.jsx` — three sub-tabs: 訂單管理, 帳號管理, 房間管理
+- `AdminDashboard.jsx` — four sub-tabs: 訂單管理, 帳號管理, 房間管理, 知識庫管理
+
+Components under [frontend/src/components/](frontend/src/components/):
+- `ChatWidget.jsx` — floating chat FAB (💬/✕) with expandable chat window; SSE streaming; sends context (userName, currentPage, prefillDate); chat history kept in React state (last 10 messages)
 
 All styles are in [frontend/src/index.css](frontend/src/index.css) (no CSS framework). The Vite dev server proxies `/api` → `http://api:3000` (Docker internal hostname). All protected `fetch` calls use `credentials: 'include'`.
 
 ## Database Schema
 
-Defined in [docker/init.sql](docker/init.sql). Three tables:
+Defined in [docker/init.sql](docker/init.sql). Four tables:
 - `users(id UUID PK, email UNIQUE, password_hash, name, role, is_active, created_at)` — seeded with one admin account on init
 - `rooms(room_number INT PK, description)` — seeded with 101–105 on init
 - `bookings(id UUID PK, room_number FK, user_id FK → users, guest_name, guest_email, check_in DATE, check_out DATE, notes, status, created_at)` — `status` is `active` or `cancelled`; `user_id` is nullable for legacy rows
+- `knowledge_chunks(id UUID PK, title UNIQUE, content, embedding vector(1536), created_at, updated_at)` — HNSW index on embedding (cosine distance); used for RAG semantic search
 
 ## Environment Variables
 
@@ -96,6 +114,8 @@ PGADMIN_EMAIL, PGADMIN_PASSWORD
 JWT_SECRET        # sign/verify JWT tokens
 JWT_EXPIRES_IN    # e.g. 7d
 ADMIN_PASSWORD    # password for the seeded admin@hotel.com account
+ANTHROPIC_API_KEY # Claude API key for AI chatbot
+OPENAI_API_KEY    # OpenAI API key for text-embedding-3-small
 ```
 
 ## OpenSpec Workflow

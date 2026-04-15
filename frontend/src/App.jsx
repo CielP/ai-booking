@@ -6,6 +6,7 @@ import MyBookings from './pages/MyBookings';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import AdminDashboard from './pages/AdminDashboard';
+import ChatWidget from './components/ChatWidget';
 import './index.css';
 
 export default function App() {
@@ -85,6 +86,7 @@ export default function App() {
       {validTab === 'admin'      && <AdminDashboard />}
       {validTab === 'login'      && <Login onLogin={() => setActiveTab('available')} />}
       {validTab === 'register'   && <Register onRegister={() => setActiveTab('available')} />}
+      {user?.role === 'admin' && <ChatWidget activeTab={validTab} bookPrefill={bookPrefill} />}
     </div>
   );
 }

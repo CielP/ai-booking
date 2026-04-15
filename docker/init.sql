@@ -1,3 +1,5 @@
+CREATE EXTENSION IF NOT EXISTS vector;
+
 CREATE TABLE users (
   id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   email         VARCHAR(255) UNIQUE NOT NULL,
@@ -43,3 +45,16 @@ INSERT INTO rooms (room_number, description) VALUES
 -- 重建方式：docker compose down -v && docker compose up --build -d
 INSERT INTO users (email, password_hash, name, role) VALUES
   ('admin@hotel.com', '$2b$10$PbjyM3vGDYZZQJ3ct4G0qOHkOnysdWhycvIEQV5/RncDN9IFCD.CS', '系統管理員', 'admin');
+
+-- 知識庫 chunks 表
+CREATE TABLE knowledge_chunks (
+  id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  title      VARCHAR(200) NOT NULL UNIQUE,
+  content    TEXT NOT NULL,
+  embedding  vector(1536),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_knowledge_embedding ON knowledge_chunks
+  USING hnsw (embedding vector_cosine_ops);

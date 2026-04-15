@@ -8,6 +8,7 @@ export default function AdminDashboard() {
     { id: 'bookings', label: '訂單管理' },
     { id: 'users',    label: '帳號管理' },
     { id: 'rooms',    label: '房間管理' },
+    { id: 'knowledge',label: '知識庫管理' },
   ];
 
   return (
@@ -26,6 +27,7 @@ export default function AdminDashboard() {
       {activeTab === 'bookings' && <BookingsPanel />}
       {activeTab === 'users'    && <UsersPanel />}
       {activeTab === 'rooms'    && <RoomsPanel />}
+      {activeTab === 'knowledge' && <KnowledgePanel />}
     </div>
   );
 }
@@ -299,5 +301,265 @@ function RoomsPanel() {
         ))}
       </tbody>
     </table>
+  );
+}
+
+// ── 知識庫管理 ──────────────────────────────────────────
+function KnowledgePanel() {
+  const [chunks, setChunks] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [editingId, setEditingId] = useState(null);
+  const [editTitle, setEditTitle] = useState('');
+  const [editContent, setEditContent] = useState('');
+  const [newTitle, setNewTitle] = useState('');
+  const [newContent, setNewContent] = useState('');
+  const [showAdd, setShowAdd] = useState(false);
+  const [showImport, setShowImport] = useState(false);
+  const [importText, setImportText] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [message, setMessage] = useState('');
+
+  const load = useCallback(() => {
+    setLoading(true);
+    fetch('/api/admin/knowledge', { credentials: 'include' })
+      .then(r => r.json())
+      .then(d => setChunks(d.chunks || []))
+      .catch(() => setError('載入知識庫失敗'))
+      .finally(() => setLoading(false));
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  function showMsg(text) {
+    setMessage(text);
+    setTimeout(() => setMessage(''), 3000);
+  }
+
+  async function handleAdd() {
+    if (!newTitle.trim() || !newContent.trim()) return;
+    setSaving(true);
+    try {
+      const res = await fetch('/api/admin/knowledge', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ title: newTitle, content: newContent }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      setNewTitle('');
+      setNewContent('');
+      setShowAdd(false);
+      showMsg('新增成功');
+      load();
+    } catch (err) {
+      alert(err.message || '新增失敗');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleSave(id) {
+    setSaving(true);
+    try {
+      const res = await fetch(`/api/admin/knowledge/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ title: editTitle, content: editContent }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      setEditingId(null);
+      showMsg('儲存成功');
+      load();
+    } catch (err) {
+      alert(err.message || '儲存失敗');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleDelete(id) {
+    if (!confirm('確定要刪除此知識庫項目？')) return;
+    try {
+      const res = await fetch(`/api/admin/knowledge/${id}`, {
+        method: 'DELETE',
+        credentials: 'include',
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      showMsg('已刪除');
+      load();
+    } catch (err) {
+      alert(err.message || '刪除失敗');
+    }
+  }
+
+  async function handleImport() {
+    if (!importText.trim()) return;
+    setSaving(true);
+    try {
+      const res = await fetch('/api/admin/knowledge/import', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ markdown: importText }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      setImportText('');
+      setShowImport(false);
+      showMsg(data.message || '匯入完成');
+      load();
+    } catch (err) {
+      alert(err.message || '匯入失敗');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleReembed() {
+    if (!confirm('確定要重新產生所有 Embedding？這可能需要一些時間。')) return;
+    setSaving(true);
+    try {
+      const res = await fetch('/api/admin/knowledge/reembed', {
+        method: 'POST',
+        credentials: 'include',
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      showMsg(`已重新產生 ${data.updated} 筆 Embedding`);
+    } catch (err) {
+      alert(err.message || '重新產生失敗');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  if (loading) return <div style={{ textAlign: 'center', padding: '24px', color: '#888' }}><span className="spinner" /></div>;
+  if (error) return <div className="alert alert-error">{error}</div>;
+
+  return (
+    <div>
+      {message && <div className="alert alert-info" style={{ marginBottom: '12px' }}>{message}</div>}
+
+      <div style={{ display: 'flex', gap: '8px', marginBottom: '16px', flexWrap: 'wrap' }}>
+        <button className="btn btn-primary" style={{ fontSize: '0.85rem' }} onClick={() => setShowAdd(!showAdd)}>
+          {showAdd ? '取消新增' : '＋ 新增項目'}
+        </button>
+        <button className="btn" style={{ fontSize: '0.85rem', background: '#f3f4f6', border: '1px solid #ddd' }} onClick={() => setShowImport(!showImport)}>
+          {showImport ? '取消匯入' : '📄 匯入 Markdown'}
+        </button>
+        <button className="btn" style={{ fontSize: '0.85rem', background: '#fef3c7', border: '1px solid #fcd34d', color: '#92400e' }} disabled={saving} onClick={handleReembed}>
+          🔄 重新產生 Embedding
+        </button>
+      </div>
+
+      {/* 新增表單 */}
+      {showAdd && (
+        <div style={{ background: '#f9fafb', padding: '16px', borderRadius: '8px', marginBottom: '16px', border: '1px solid #e5e7eb' }}>
+          <input
+            value={newTitle}
+            onChange={e => setNewTitle(e.target.value)}
+            placeholder="標題"
+            style={{ width: '100%', padding: '8px 12px', marginBottom: '8px', borderRadius: '6px', border: '1px solid #d1d5db' }}
+          />
+          <textarea
+            value={newContent}
+            onChange={e => setNewContent(e.target.value)}
+            placeholder="內容（支援 Markdown）"
+            rows={6}
+            style={{ width: '100%', padding: '8px 12px', borderRadius: '6px', border: '1px solid #d1d5db', resize: 'vertical' }}
+          />
+          <button className="btn btn-primary" style={{ marginTop: '8px', fontSize: '0.85rem' }} disabled={saving || !newTitle.trim() || !newContent.trim()} onClick={handleAdd}>
+            {saving ? <span className="spinner" /> : '新增'}
+          </button>
+        </div>
+      )}
+
+      {/* 匯入 Markdown */}
+      {showImport && (
+        <div style={{ background: '#f0f9ff', padding: '16px', borderRadius: '8px', marginBottom: '16px', border: '1px solid #bae6fd' }}>
+          <p style={{ fontSize: '0.82rem', color: '#666', marginBottom: '8px' }}>
+            貼上 Markdown 文本，系統將以 H2 標題（## ）為分界自動分段匯入。同名標題的項目會被覆蓋更新。
+          </p>
+          <textarea
+            value={importText}
+            onChange={e => setImportText(e.target.value)}
+            placeholder="貼上 Markdown 文本…"
+            rows={8}
+            style={{ width: '100%', padding: '8px 12px', borderRadius: '6px', border: '1px solid #d1d5db', resize: 'vertical', fontFamily: 'monospace', fontSize: '0.82rem' }}
+          />
+          <button className="btn btn-primary" style={{ marginTop: '8px', fontSize: '0.85rem' }} disabled={saving || !importText.trim()} onClick={handleImport}>
+            {saving ? <span className="spinner" /> : '匯入'}
+          </button>
+        </div>
+      )}
+
+      <p style={{ fontSize: '0.85rem', color: '#888', marginBottom: '8px' }}>共 {chunks.length} 筆知識庫項目</p>
+
+      {/* Chunks 列表 */}
+      {chunks.map(c => (
+        <div key={c.id} style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: '8px', padding: '14px', marginBottom: '10px' }}>
+          {editingId === c.id ? (
+            <>
+              <input
+                value={editTitle}
+                onChange={e => setEditTitle(e.target.value)}
+                style={{ width: '100%', padding: '6px 10px', marginBottom: '8px', borderRadius: '6px', border: '1px solid #d1d5db', fontWeight: 600 }}
+              />
+              <textarea
+                value={editContent}
+                onChange={e => setEditContent(e.target.value)}
+                rows={8}
+                style={{ width: '100%', padding: '6px 10px', borderRadius: '6px', border: '1px solid #d1d5db', resize: 'vertical', fontFamily: 'monospace', fontSize: '0.82rem' }}
+              />
+              <div style={{ display: 'flex', gap: '6px', marginTop: '8px' }}>
+                <button className="btn btn-primary" style={{ padding: '4px 12px', fontSize: '0.82rem' }} disabled={saving} onClick={() => handleSave(c.id)}>
+                  {saving ? <span className="spinner" /> : '儲存'}
+                </button>
+                <button className="btn" style={{ padding: '4px 12px', fontSize: '0.82rem', background: '#f3f4f6', border: '1px solid #ddd' }} onClick={() => setEditingId(null)}>
+                  取消
+                </button>
+              </div>
+            </>
+          ) : (
+            <>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontWeight: 600, marginBottom: '4px' }}>{c.title}</div>
+                  <div style={{ fontSize: '0.82rem', color: '#666', whiteSpace: 'pre-wrap', maxHeight: '80px', overflow: 'hidden' }}>
+                    {c.content.length > 200 ? c.content.slice(0, 200) + '…' : c.content}
+                  </div>
+                  <div style={{ fontSize: '0.75rem', color: '#aaa', marginTop: '6px' }}>
+                    更新：{new Date(c.updated_at).toLocaleString('zh-TW')}
+                  </div>
+                </div>
+                <div style={{ display: 'flex', gap: '6px', marginLeft: '12px', flexShrink: 0 }}>
+                  <button
+                    className="btn btn-primary"
+                    style={{ padding: '4px 10px', fontSize: '0.82rem' }}
+                    onClick={() => { setEditingId(c.id); setEditTitle(c.title); setEditContent(c.content); }}
+                  >
+                    編輯
+                  </button>
+                  <button
+                    className="btn btn-danger"
+                    style={{ padding: '4px 10px', fontSize: '0.82rem' }}
+                    onClick={() => handleDelete(c.id)}
+                  >
+                    刪除
+                  </button>
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+      ))}
+
+      {chunks.length === 0 && <div className="alert alert-info">目前尚無知識庫項目，請新增或匯入 Markdown。</div>}
+    </div>
   );
 }

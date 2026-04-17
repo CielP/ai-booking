@@ -40,11 +40,11 @@ INSERT INTO rooms (room_number, description) VALUES
   (104, '標準雙人房'),
   (105, '標準雙人房');
 
--- 預設 admin 帳號：admin@hotel.com / admin123456
--- 如需更換密碼，請重新產生 bcrypt hash 並替換下方的 password_hash 值
--- 重建方式：docker compose down -v && docker compose up --build -d
+-- 預設 admin 帳號：admin@hotel.com
+-- 密碼由 ADMIN_PASSWORD 環境變數控制，後端啟動時會自動同步
+-- 此處的 hash 為初始值，實際密碼以環境變數為準
 INSERT INTO users (email, password_hash, name, role) VALUES
-  ('admin@hotel.com', '$2b$10$PbjyM3vGDYZZQJ3ct4G0qOHkOnysdWhycvIEQV5/RncDN9IFCD.CS', '系統管理員', 'admin');
+  ('admin@hotel.com', '$2b$10$k69JJ1B6exKxppbiYCtQe.UOhlNj.GI4mfu1jyBk1k71zumeTqlOW', '系統管理員', 'admin');
 
 -- 知識庫 chunks 表
 CREATE TABLE knowledge_chunks (

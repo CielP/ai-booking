@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useAuth } from '../context/AuthContext.jsx';
+import { API_BASE } from '../config.js';
 
 export default function Register({ onRegister }) {
   const { login } = useAuth();
@@ -20,7 +21,7 @@ export default function Register({ onRegister }) {
     }
     setLoading(true);
     try {
-      const res = await fetch('/api/auth/register', {
+      const res = await fetch(`${API_BASE}/api/auth/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',

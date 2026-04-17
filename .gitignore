@@ -36,3 +36,13 @@ pgdata/
 .claude/worktrees/
 
 # .claude (commands/skills) and openspec are intentionally tracked in version control
+
+# Terraform
+*.tfstate
+*.tfstate.*
+*.tfvars
+!*.tfvars.example
+.terraform/
+.terraform.lock.hcl
+tfplan
+crash.log

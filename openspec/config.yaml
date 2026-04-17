@@ -12,7 +12,9 @@ context: |
   - Database: PostgreSQL 16 + pgvector（image: pgvector/pgvector:pg16），直接使用 pg.Pool（無 ORM）
   - LLM: Claude claude-sonnet-4-20250514 via @anthropic-ai/sdk，SSE 串流回覆
   - Embedding: OpenAI text-embedding-3-small（1536 維度）via openai SDK
-  - Deployment: Docker Compose（db、pgadmin、api、web 四個服務）
+  - Deployment (Dev): Docker Compose（db、pgadmin、api、web 四個服務）
+  - Deployment (Prod): AWS ECS Fargate + RDS PostgreSQL 16 + ALB + ACM，Terraform IaC，子路徑 `/mountain-lodge/` 部署於 `wsterling.org`
+  - IaC: Terraform >= 1.5，S3 backend + DynamoDB state locking，AWS provider ~> 5.0，region ap-northeast-1
 
   ## Auth & RBAC
   - JWT 以 httpOnly Cookie（名稱 `token`）傳遞；使用 jsonwebtoken + bcryptjs
@@ -59,6 +61,16 @@ context: |
   - 取消訂單功能已整合至「我的訂單」頁面（每張 active 訂單卡片上有取消按鈕），無獨立取消分頁
   - admin 登入後頁面右下角顯示浮動聊天視窗（ChatWidget），支援 AI 客服對話（SSE 串流），品牌名「小山 AI 客服」
   - Navbar 右側：未登入時顯示主題切換 + 「登入」「註冊」按鈕；已登入時顯示主題切換 + 用戶姓名、角色標籤（admin）、登出按鈕
+
+  ## AWS Deployment
+  - Terraform 檔案放在 terraform/，state backend 放在 terraform/state/
+  - 部署腳本放在 scripts/（deploy.sh、init-db.sh）
+  - 前端生產建構使用 frontend/Dockerfile.prod（多階段：Vite build → Nginx）
+  - Nginx 設定 frontend/nginx.conf 處理子路徑 `/mountain-lodge/` 靜態檔案與 API 反向代理
+  - 前端 fetch URL 透過 `frontend/src/config.js` 導出 `API_BASE`（讀取 `import.meta.env.VITE_API_BASE`，預設空字串），本機開發不受影響
+  - 後端提供 `GET /api/health` 健康檢查端點；CORS 支援 `CORS_ORIGIN` 環境變數
+  - AWS 資源：VPC（2 公有 + 2 私有子網）、ECS Fargate（Nginx + Node.js sidecar）、RDS PostgreSQL 16（db.t3.micro）、ALB + HTTPS、ACM 憑證（DNS 驗證）、Secrets Manager、ECR（frontend + backend）、CloudWatch Logs
+  - Vite 建構支援 `VITE_BASE` 環境變數設定 base 路徑
 
   ## Database Schema
   - users(id UUID PK DEFAULT gen_random_uuid(), email VARCHAR(255) UNIQUE NOT NULL,

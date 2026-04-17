@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext.jsx';
+import { API_BASE } from '../config.js';
 
 const TAB_LABELS = {
   available: '查詢空房',
@@ -57,7 +58,7 @@ export default function ChatWidget({ activeTab, bookPrefill }) {
     setMessages((prev) => [...prev, { role: 'assistant', content: '' }]);
 
     try {
-      const res = await fetch('/api/chat', {
+      const res = await fetch(`${API_BASE}/api/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',

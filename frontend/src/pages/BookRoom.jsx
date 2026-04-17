@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext.jsx';
+import { API_BASE } from '../config.js';
 
 export default function BookRoom({ prefill, onBooked }) {
   const { user } = useAuth();
@@ -47,7 +48,7 @@ export default function BookRoom({ prefill, onBooked }) {
 
     setLoading(true);
     try {
-      const res = await fetch('/api/bookings', {
+      const res = await fetch(`${API_BASE}/api/bookings`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',

@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useEffect } from 'react';
+import { API_BASE } from '../config.js';
 
 const AuthContext = createContext(null);
 
@@ -6,7 +7,7 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(undefined); // undefined = loading, null = not logged in
 
   useEffect(() => {
-    fetch('/api/auth/me', { credentials: 'include' })
+    fetch(`${API_BASE}/api/auth/me`, { credentials: 'include' })
       .then(res => res.ok ? res.json() : null)
       .then(data => setUser(data ? data.user : null))
       .catch(() => setUser(null));

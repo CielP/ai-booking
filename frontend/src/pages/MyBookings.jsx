@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { API_BASE } from '../config.js';
 
 export default function MyBookings() {
   const [bookings, setBookings] = useState(null);
@@ -8,7 +9,7 @@ export default function MyBookings() {
   const [cancelError, setCancelError] = useState('');
 
   useEffect(() => {
-    fetch('/api/bookings', { credentials: 'include' })
+    fetch(`${API_BASE}/api/bookings`, { credentials: 'include' })
       .then(res => res.json().then(data => ({ ok: res.ok, data })))
       .then(({ ok, data }) => {
         if (!ok) throw new Error(data.error);
@@ -23,7 +24,7 @@ export default function MyBookings() {
     setCancelError('');
     setCancellingId(id);
     try {
-      const res = await fetch(`/api/bookings/${encodeURIComponent(id)}`, {
+      const res = await fetch(`${API_BASE}/api/bookings/${encodeURIComponent(id)}`, {
         method: 'DELETE',
         credentials: 'include',
       });

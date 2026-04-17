@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { API_BASE } from '../config.js';
 
 export default function AvailableRooms({ onBook }) {
   const [checkIn, setCheckIn] = useState('');
@@ -25,7 +26,7 @@ export default function AvailableRooms({ onBook }) {
 
     setLoading(true);
     try {
-      const res = await fetch(`/api/rooms/available?check_in=${checkIn}&check_out=${checkOut}`);
+      const res = await fetch(`${API_BASE}/api/rooms/available?check_in=${checkIn}&check_out=${checkOut}`);
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
       setRooms(data.rooms);

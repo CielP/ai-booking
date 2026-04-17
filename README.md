@@ -12,7 +12,8 @@ A full-stack hotel room booking web app for a 5-room hotel (rooms 101–105). Fe
 | LLM        | Claude (Anthropic SDK) |
 | Embedding  | OpenAI text-embedding-3-small |
 | Auth       | JWT (httpOnly Cookie) + bcrypt |
-| Infra      | Docker Compose |
+| Infra (Dev)  | Docker Compose |
+| Infra (Prod) | AWS ECS Fargate, RDS, ALB, Terraform |
 
 ## Getting Started
 
@@ -37,6 +38,48 @@ docker compose up --build -d
 | pgAdmin  | http://localhost:5050 |
 
 The database schema and seed data (including the admin account) are applied automatically from `docker/init.sql` on first start.
+
+### Production Deployment (AWS)
+
+Production is deployed on AWS ECS Fargate at **https://wsterling.org/mountain-lodge/**.
+
+**Infrastructure** (Terraform):
+- VPC with 2 public + 2 private subnets
+- ECS Fargate (Nginx + Node.js sidecar containers)
+- RDS PostgreSQL 16 + pgvector (db.t3.micro)
+- ALB + HTTPS (ACM certificate, DNS validation)
+- Secrets Manager (JWT, DB password, API keys)
+- ECR (frontend + backend repositories)
+- CloudWatch Logs
+- Region: `ap-northeast-1` (Tokyo)
+
+**Deploy**:
+```bash
+# Build, push images to ECR, and update ECS service
+./scripts/deploy.sh
+
+# Initialize RDS database
+./scripts/init-db.sh
+```
+
+See `terraform/` for infrastructure-as-code and `terraform/state/` for the S3 state backend configuration.
+
+**Tear down** (destroy all AWS resources):
+```bash
+# 1. Destroy application resources (VPC, ECS, RDS, ALB, etc.)
+cd terraform
+terraform destroy
+
+# 2. (Optional) Destroy state backend (S3 bucket + DynamoDB table)
+#    Empty the S3 bucket first (including versioned objects), then destroy:
+cd terraform/state
+aws s3api list-object-versions --bucket mountain-lodge-terraform-state \
+  --query '{Objects: Versions[].{Key:Key,VersionId:VersionId}}' --output json | \
+  aws s3api delete-objects --bucket mountain-lodge-terraform-state --delete file:///dev/stdin
+terraform destroy
+```
+
+> **Important**: Always destroy `terraform/` before `terraform/state/` — the state backend must exist while Terraform tracks which resources to delete. RDS data will be permanently lost after destroy.
 
 ### Default Admin Account
 
@@ -80,7 +123,7 @@ The database schema and seed data (including the admin account) are applied auto
 .
 ├── backend/
 │   └── src/
-│       ├── index.js              # Express entry point
+│       ├── index.js              # Express entry point + /api/health
 │       ├── db.js                 # pg.Pool instance
 │       ├── middleware/
 │       │   └── auth.js           # authenticate / requireAuth / requireAdmin
@@ -97,11 +140,14 @@ The database schema and seed data (including the admin account) are applied auto
 │           ├── knowledge.js      # /api/admin/knowledge/*
 │           └── chat.js           # /api/chat (SSE)
 ├── frontend/
+│   ├── Dockerfile.prod           # Multi-stage: Vite build → Nginx (production)
+│   ├── nginx.conf                # Subpath /mountain-lodge/ routing + API proxy
 │   └── src/
 │       ├── main.jsx
 │       ├── App.jsx               # Navbar + Sidebar layout + theme toggle
 │       ├── App.css               # Minimal (tokens in index.css)
 │       ├── index.css             # Design system (CSS variables, all styles)
+│       ├── config.js             # API_BASE from VITE_API_BASE env var
 │       ├── context/
 │       │   └── AuthContext.jsx   # Global auth state (useAuth hook)
 │       ├── components/
@@ -116,11 +162,35 @@ The database schema and seed data (including the admin account) are applied auto
 │       └── assets/
 ├── docker/
 │   └── init.sql                  # Schema + seed data (incl. pgvector)
+├── terraform/                    # AWS infrastructure (IaC)
+│   ├── main.tf                   # Provider + S3 backend
+│   ├── variables.tf              # Input variables
+│   ├── outputs.tf                # ALB DNS, ECR URLs, RDS endpoint
+│   ├── vpc.tf                    # VPC, subnets, IGW, route tables
+│   ├── security_groups.tf        # ALB, ECS, RDS security groups
+│   ├── ecr.tf                    # ECR repositories
+│   ├── secrets.tf                # Secrets Manager
+│   ├── rds.tf                    # RDS PostgreSQL 16 + pgvector
+│   ├── acm.tf                    # ACM certificate (DNS validation)
+│   ├── alb.tf                    # ALB + HTTPS listener + target group
+│   ├── ecs.tf                    # ECS Fargate cluster + service + task def
+│   ├── cloudwatch.tf             # CloudWatch Log Groups
+│   └── state/
+│       └── main.tf               # S3 + DynamoDB state backend
+├── scripts/
+│   ├── deploy.sh                 # Build, push ECR, update ECS service
+│   └── init-db.sh                # Initialize RDS database
 ├── docker-compose.yml
 └── .env.example
 ```
 
 ## API Reference
+
+### Health Check
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/api/health` | Health check endpoint (returns 200) |
 
 ### Auth (public)
 
@@ -236,4 +306,9 @@ ADMIN_PASSWORD    # Password for the seeded admin@hotel.com account
 # AI (for chatbot & knowledge base)
 ANTHROPIC_API_KEY # Claude API key for AI chatbot
 OPENAI_API_KEY    # OpenAI API key for text-embedding-3-small
+
+# Production only
+CORS_ORIGIN       # Allowed CORS origin (e.g. https://wsterling.org)
+VITE_API_BASE     # API base path prefix (empty string in dev)
+VITE_BASE         # Vite base path (e.g. /mountain-lodge/)
 ```

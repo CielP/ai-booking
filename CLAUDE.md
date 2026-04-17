@@ -4,9 +4,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What This Repo Is
 
-「山景旅宿」— a hotel room booking website for a 5-room hotel (rooms 101–105). Built with React (Vite) frontend, Express backend, and PostgreSQL + pgvector — all orchestrated via Docker Compose. The system has full user authentication (JWT + httpOnly Cookie) and RBAC (roles: `admin` / `guest`). It includes an AI customer service chatbot (admin-only) powered by Claude + RAG with a pgvector-backed knowledge base. The frontend uses a navy + gold design system with Navbar + Sidebar navigation, light/dark theme support, and a CSS gradient hero section. The repo also uses **OpenSpec**, a spec-driven workflow framework for AI-assisted development.
+「山景旅宿」— a hotel room booking website for a 5-room hotel (rooms 101–105). Built with React (Vite) frontend, Express backend, and PostgreSQL + pgvector — all orchestrated via Docker Compose (dev) and AWS ECS Fargate + Terraform (prod). The system has full user authentication (JWT + httpOnly Cookie) and RBAC (roles: `admin` / `guest`). It includes an AI customer service chatbot (admin-only) powered by Claude + RAG with a pgvector-backed knowledge base. The frontend uses a navy + gold design system with Navbar + Sidebar navigation, light/dark theme support, and a CSS gradient hero section. Production deployment is on AWS at `https://wsterling.org/mountain-lodge/` via ECS Fargate, RDS PostgreSQL, ALB + HTTPS. The repo also uses **OpenSpec**, a spec-driven workflow framework for AI-assisted development.
 
 ## Running the Application
+
+### Local Development (Docker Compose)
 
 ```bash
 # Start all services (db, api, frontend, pgAdmin)
@@ -28,9 +30,30 @@ docker compose logs -f web
 
 Copy `.env.example` to `.env` before first run. The database is initialized automatically from `docker/init.sql` on first start. The default admin account is `admin@hotel.com` with password from `ADMIN_PASSWORD` in `.env`.
 
+### Production Deployment (AWS)
+
+Production runs on AWS ECS Fargate at `https://wsterling.org/mountain-lodge/`.
+
+**Infrastructure**: Defined in [terraform/](terraform/) — VPC, ECS Fargate, RDS PostgreSQL 16 + pgvector, ALB + HTTPS (ACM), Secrets Manager, ECR, CloudWatch. Region: `ap-northeast-1`. Terraform state stored in S3 with DynamoDB locking ([terraform/state/](terraform/state/)).
+
+**Deploy**:
+```bash
+# Build, push images to ECR, and update ECS service
+./scripts/deploy.sh
+
+# Initialize RDS database
+./scripts/init-db.sh
+```
+
+**Key production configs**:
+- Frontend: [frontend/Dockerfile.prod](frontend/Dockerfile.prod) (multi-stage: Vite build → Nginx), [frontend/nginx.conf](frontend/nginx.conf) (subpath `/mountain-lodge/` routing + API proxy)
+- API base path: [frontend/src/config.js](frontend/src/config.js) — exports `API_BASE` from `VITE_API_BASE` env var (empty string in dev)
+- Health check: `GET /api/health`
+- CORS: configurable via `CORS_ORIGIN` env var
+
 ## Backend
 
-**Entry point**: [backend/src/index.js](backend/src/index.js)  
+**Entry point**: [backend/src/index.js](backend/src/index.js) — also serves `GET /api/health` (health check) and supports `CORS_ORIGIN` env var  
 **DB connection pool**: [backend/src/db.js](backend/src/db.js) — uses `pg.Pool`, reads `DB_*` env vars  
 **Auth middleware**: [backend/src/middleware/auth.js](backend/src/middleware/auth.js) — `authenticate` (soft), `requireAuth` (401), `requireAdmin` (403)  
 **Services**: [backend/src/services/](backend/src/services/) — `embedding.js` (OpenAI text-embedding-3-small wrapper), `rag.js` (pgvector cosine similarity search)  

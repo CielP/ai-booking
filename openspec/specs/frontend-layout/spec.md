@@ -7,7 +7,11 @@
 ## Requirements
 
 ### Requirement: 頂部 Navbar
-系統 SHALL 顯示固定於頂部的 Navbar（sticky），左側顯示品牌名「山景旅宿」（使用 Noto Serif TC 字型），右側顯示主題切換按鈕、用戶資訊（登入後）或登入/註冊按鈕（未登入時）。
+系統 SHALL 顯示固定於頂部的 Navbar（sticky），左側顯示品牌名「山景旅宿」（使用 Noto Serif TC 字型），右側顯示主題切換按鈕、用戶資訊（登入後）或登入/註冊按鈕（未登入時）。所有 API 呼叫（如登出）SHALL 使用可配置的 API_BASE 前綴。
+
+#### Scenario: 登出 API 呼叫使用 API_BASE
+- **WHEN** 已登入用戶點擊「登出」按鈕
+- **THEN** fetch URL SHALL 為 `${API_BASE}/api/auth/logout`
 
 #### Scenario: 未登入用戶看到的 Navbar
 - **WHEN** 匿名用戶訪問網站

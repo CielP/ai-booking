@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from './context/AuthContext.jsx';
+import { API_BASE } from './config.js';
 import AvailableRooms from './pages/AvailableRooms';
 import BookRoom from './pages/BookRoom';
 import MyBookings from './pages/MyBookings';
@@ -50,7 +51,7 @@ export default function App() {
   }
 
   async function handleLogout() {
-    await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' });
+    await fetch(`${API_BASE}/api/auth/logout`, { method: 'POST', credentials: 'include' });
     logout();
     setActiveTab('available');
   }

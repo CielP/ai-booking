@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext.jsx';
+import { API_BASE } from '../config.js';
 
 export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState('bookings');
@@ -41,7 +42,7 @@ function BookingsPanel() {
 
   const load = useCallback(() => {
     setLoading(true);
-    fetch('/api/bookings', { credentials: 'include' })
+    fetch(`${API_BASE}/api/bookings`, { credentials: 'include' })
       .then(r => r.json())
       .then(d => setBookings(d.bookings || []))
       .catch(() => setError('載入訂單失敗'))
@@ -54,7 +55,7 @@ function BookingsPanel() {
     if (!confirm('確定要取消這筆訂單？')) return;
     setCancellingId(id);
     try {
-      const res = await fetch(`/api/bookings/${id}`, {
+      const res = await fetch(`${API_BASE}/api/bookings/${id}`, {
         method: 'DELETE',
         credentials: 'include',
       });
@@ -133,7 +134,7 @@ function UsersPanel() {
 
   const load = useCallback(() => {
     setLoading(true);
-    fetch('/api/admin/users', { credentials: 'include' })
+    fetch(`${API_BASE}/api/admin/users`, { credentials: 'include' })
       .then(r => r.json())
       .then(d => setUsers(d.users || []))
       .catch(() => setError('載入帳號失敗'))
@@ -145,7 +146,7 @@ function UsersPanel() {
   async function updateUser(id, patch) {
     setUpdatingId(id);
     try {
-      const res = await fetch(`/api/admin/users/${id}`, {
+      const res = await fetch(`${API_BASE}/api/admin/users/${id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -233,7 +234,7 @@ function RoomsPanel() {
   const [savingId, setSavingId] = useState(null);
 
   useEffect(() => {
-    fetch('/api/admin/rooms', { credentials: 'include' })
+    fetch(`${API_BASE}/api/admin/rooms`, { credentials: 'include' })
       .then(r => r.json())
       .then(d => {
         setRooms(d.rooms || []);
@@ -248,7 +249,7 @@ function RoomsPanel() {
   async function saveRoom(room_number) {
     setSavingId(room_number);
     try {
-      const res = await fetch(`/api/admin/rooms/${room_number}`, {
+      const res = await fetch(`${API_BASE}/api/admin/rooms/${room_number}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -322,7 +323,7 @@ function KnowledgePanel() {
 
   const load = useCallback(() => {
     setLoading(true);
-    fetch('/api/admin/knowledge', { credentials: 'include' })
+    fetch(`${API_BASE}/api/admin/knowledge`, { credentials: 'include' })
       .then(r => r.json())
       .then(d => setChunks(d.chunks || []))
       .catch(() => setError('載入知識庫失敗'))
@@ -340,7 +341,7 @@ function KnowledgePanel() {
     if (!newTitle.trim() || !newContent.trim()) return;
     setSaving(true);
     try {
-      const res = await fetch('/api/admin/knowledge', {
+      const res = await fetch(`${API_BASE}/api/admin/knowledge`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -363,7 +364,7 @@ function KnowledgePanel() {
   async function handleSave(id) {
     setSaving(true);
     try {
-      const res = await fetch(`/api/admin/knowledge/${id}`, {
+      const res = await fetch(`${API_BASE}/api/admin/knowledge/${id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -384,7 +385,7 @@ function KnowledgePanel() {
   async function handleDelete(id) {
     if (!confirm('確定要刪除此知識庫項目？')) return;
     try {
-      const res = await fetch(`/api/admin/knowledge/${id}`, {
+      const res = await fetch(`${API_BASE}/api/admin/knowledge/${id}`, {
         method: 'DELETE',
         credentials: 'include',
       });
@@ -401,7 +402,7 @@ function KnowledgePanel() {
     if (!importText.trim()) return;
     setSaving(true);
     try {
-      const res = await fetch('/api/admin/knowledge/import', {
+      const res = await fetch(`${API_BASE}/api/admin/knowledge/import`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -424,7 +425,7 @@ function KnowledgePanel() {
     if (!confirm('確定要重新產生所有 Embedding？這可能需要一些時間。')) return;
     setSaving(true);
     try {
-      const res = await fetch('/api/admin/knowledge/reembed', {
+      const res = await fetch(`${API_BASE}/api/admin/knowledge/reembed`, {
         method: 'POST',
         credentials: 'include',
       });

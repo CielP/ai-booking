@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from './context/AuthContext.jsx';
 import AvailableRooms from './pages/AvailableRooms';
 import BookRoom from './pages/BookRoom';
@@ -9,10 +9,40 @@ import AdminDashboard from './pages/AdminDashboard';
 import ChatWidget from './components/ChatWidget';
 import './index.css';
 
+const NAV_ITEMS = [
+  { id: 'available',  label: '查詢空房', icon: '🔍', show: () => true },
+  { id: 'book',       label: '預訂房間', icon: '📝', show: (u) => !!u },
+  { id: 'mybookings', label: '我的訂單', icon: '📋', show: (u) => !!u },
+  { id: 'admin',      label: '管理後台', icon: '⚙️', show: (u) => u?.role === 'admin' },
+];
+
 export default function App() {
   const { user, logout } = useAuth();
   const [activeTab, setActiveTab] = useState('available');
   const [bookPrefill, setBookPrefill] = useState(null);
+  const [sidebarExpanded, setSidebarExpanded] = useState(() => {
+    return localStorage.getItem('sidebarExpanded') === 'true';
+  });
+  const [theme, setTheme] = useState(() => {
+    return localStorage.getItem('theme') || 'light';
+  });
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme);
+    localStorage.setItem('theme', theme);
+  }, [theme]);
+
+  useEffect(() => {
+    localStorage.setItem('sidebarExpanded', sidebarExpanded);
+  }, [sidebarExpanded]);
+
+  function toggleTheme() {
+    setTheme(prev => prev === 'light' ? 'dark' : 'light');
+  }
+
+  function toggleSidebar() {
+    setSidebarExpanded(prev => !prev);
+  }
 
   function handleBook(prefill) {
     setBookPrefill(prefill);
@@ -28,64 +58,92 @@ export default function App() {
   // 等待 auth 初始化
   if (user === undefined) {
     return (
-      <div className="app">
-        <h1>🏨 旅館訂房系統</h1>
-        <div style={{ textAlign: 'center', padding: '40px', color: '#888' }}>
+      <div className="app-loading">
+        <div className="app-loading-brand">🏔️ 山景旅宿</div>
+        <div>
           <span className="spinner" /> 載入中…
         </div>
       </div>
     );
   }
 
-  const tabs = [
-    { id: 'available', label: '查詢空房', show: true },
-    { id: 'book',      label: '預訂房間', show: !!user },
-    { id: 'mybookings',label: '我的訂單', show: !!user },
-    { id: 'admin',     label: '管理後台', show: user?.role === 'admin' },
-  ].filter(t => t.show);
+  const visibleNav = NAV_ITEMS.filter(item => item.show(user));
 
   // 如果目前 tab 對登入狀態不適用，回到 available
-  // login/register 不在 tabs 中但仍為有效的 activeTab（由 header 按鈕觸發）
   const authPages = ['login', 'register'];
-  const validTab = tabs.find(t => t.id === activeTab) || (!user && authPages.includes(activeTab))
+  const validTab = visibleNav.find(t => t.id === activeTab) || (!user && authPages.includes(activeTab))
     ? activeTab
     : 'available';
 
   return (
-    <div className="app">
-      <div className="app-header">
-        <h1>🏨 旅館訂房系統</h1>
-        {user ? (
-          <div className="user-info">
-            <span className="user-name">{user.name}</span>
-            {user.role === 'admin' && <span className="role-badge">管理者</span>}
-            <button className="btn btn-logout" onClick={handleLogout}>登出</button>
-          </div>
-        ) : (
-          <div className="auth-actions">
-            <button className="btn btn-auth-outline" onClick={() => setActiveTab('login')}>登入</button>
-            <button className="btn btn-primary" onClick={() => setActiveTab('register')}>註冊</button>
-          </div>
-        )}
-      </div>
-      <div className="tabs">
-        {tabs.map(tab => (
-          <button
-            key={tab.id}
-            className={`tab-btn${validTab === tab.id ? ' active' : ''}`}
-            onClick={() => setActiveTab(tab.id)}
-          >
-            {tab.label}
+    <div className="app-layout">
+      {/* ── Navbar ──────────────────────── */}
+      <nav className="navbar">
+        <button className="navbar-hamburger" onClick={toggleSidebar} aria-label="切換選單">
+          ☰
+        </button>
+        <div className="navbar-brand">
+          <span>🏔️</span>
+          <span className="navbar-brand-text">山景旅宿</span>
+        </div>
+        <div className="navbar-spacer" />
+        <div className="navbar-actions">
+          <button className="theme-toggle" onClick={toggleTheme} aria-label="切換主題">
+            {theme === 'light' ? '🌙' : '☀️'}
           </button>
-        ))}
-      </div>
+          {user ? (
+            <div className="user-info">
+              <span className="user-name">{user.name}</span>
+              {user.role === 'admin' && <span className="role-badge">管理者</span>}
+              <button className="btn-logout" onClick={handleLogout}>登出</button>
+            </div>
+          ) : (
+            <div className="auth-actions">
+              <button className="btn-auth-outline" onClick={() => setActiveTab('login')}>登入</button>
+              <button className="btn btn-primary" onClick={() => setActiveTab('register')}>註冊</button>
+            </div>
+          )}
+        </div>
+      </nav>
 
-      {validTab === 'available'  && <AvailableRooms onBook={user ? handleBook : null} />}
-      {validTab === 'book'       && <BookRoom prefill={bookPrefill} />}
-      {validTab === 'mybookings' && <MyBookings />}
-      {validTab === 'admin'      && <AdminDashboard />}
-      {validTab === 'login'      && <Login onLogin={() => setActiveTab('available')} />}
-      {validTab === 'register'   && <Register onRegister={() => setActiveTab('available')} />}
+      {/* ── Sidebar overlay (mobile) ───── */}
+      <div
+        className={`sidebar-overlay${sidebarExpanded ? ' visible' : ''}`}
+        onClick={() => setSidebarExpanded(false)}
+      />
+
+      {/* ── Sidebar ────────────────────── */}
+      <aside className={`sidebar${sidebarExpanded ? ' expanded' : ''}`}>
+        <nav className="sidebar-nav">
+          {visibleNav.map(item => (
+            <button
+              key={item.id}
+              className={`sidebar-item${validTab === item.id ? ' active' : ''}`}
+              onClick={() => {
+                setActiveTab(item.id);
+                if (window.innerWidth < 768) setSidebarExpanded(false);
+              }}
+              title={item.label}
+            >
+              <span className="sidebar-icon">{item.icon}</span>
+              <span className="sidebar-label">{item.label}</span>
+            </button>
+          ))}
+        </nav>
+      </aside>
+
+      {/* ── Main Content ───────────────── */}
+      <main className={`main-content${sidebarExpanded ? ' sidebar-expanded' : ''}`}>
+        <div className="main-inner">
+          {validTab === 'available'  && <AvailableRooms onBook={user ? handleBook : null} />}
+          {validTab === 'book'       && <BookRoom prefill={bookPrefill} />}
+          {validTab === 'mybookings' && <MyBookings />}
+          {validTab === 'admin'      && <AdminDashboard />}
+          {validTab === 'login'      && <Login onLogin={() => setActiveTab('available')} />}
+          {validTab === 'register'   && <Register onRegister={() => setActiveTab('available')} />}
+        </div>
+      </main>
+
       {user?.role === 'admin' && <ChatWidget activeTab={validTab} bookPrefill={bookPrefill} />}
     </div>
   );

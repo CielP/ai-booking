@@ -37,7 +37,12 @@ export default function AvailableRooms({ onBook }) {
   }
 
   return (
-    <div className="card">
+    <div>
+      <div className="hero-section">
+        <h1 className="hero-title">山景旅宿</h1>
+        <p className="hero-subtitle">寧靜山林間的舒適住所</p>
+      </div>
+      <div className="card">
       <form onSubmit={handleSearch}>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
           <div className="form-group">
@@ -63,7 +68,7 @@ export default function AvailableRooms({ onBook }) {
           </div>
         ) : (
           <>
-            <p style={{ marginTop: '16px', fontSize: '0.9rem', color: '#666' }}>
+            <p style={{ marginTop: '16px', fontSize: '0.9rem', color: 'var(--color-text-secondary)' }}>
               找到 {rooms.length} 間空房，點選即可預訂：
             </p>
             <div className="room-list">
@@ -81,6 +86,7 @@ export default function AvailableRooms({ onBook }) {
           </>
         )
       )}
+      </div>
     </div>
   );
 }

@@ -33,5 +33,6 @@ pgdata/
 
 # Claude Code — local settings are machine-specific
 .claude/settings.local.json
+.claude/worktrees/
 
 # .claude (commands/skills) and openspec are intentionally tracked in version control

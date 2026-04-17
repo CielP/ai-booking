@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What This Repo Is
 
-A hotel room booking website for a 5-room hotel (rooms 101–105). Built with React (Vite) frontend, Express backend, and PostgreSQL + pgvector — all orchestrated via Docker Compose. The system has full user authentication (JWT + httpOnly Cookie) and RBAC (roles: `admin` / `guest`). It includes an AI customer service chatbot (admin-only) powered by Claude + RAG with a pgvector-backed knowledge base. The repo also uses **OpenSpec**, a spec-driven workflow framework for AI-assisted development.
+「山景旅宿」— a hotel room booking website for a 5-room hotel (rooms 101–105). Built with React (Vite) frontend, Express backend, and PostgreSQL + pgvector — all orchestrated via Docker Compose. The system has full user authentication (JWT + httpOnly Cookie) and RBAC (roles: `admin` / `guest`). It includes an AI customer service chatbot (admin-only) powered by Claude + RAG with a pgvector-backed knowledge base. The frontend uses a navy + gold design system with Navbar + Sidebar navigation, light/dark theme support, and a CSS gradient hero section. The repo also uses **OpenSpec**, a spec-driven workflow framework for AI-assisted development.
 
 ## Running the Application
 
@@ -75,17 +75,33 @@ All routes return `{ error: "<message>" }` on failure. Date overlap logic: a con
 **Entry**: [frontend/src/main.jsx](frontend/src/main.jsx) → [frontend/src/App.jsx](frontend/src/App.jsx)  
 **Auth context**: [frontend/src/context/AuthContext.jsx](frontend/src/context/AuthContext.jsx) — provides `{ user, login, logout }` via `useAuth()` hook; `user === undefined` means loading, `null` means anonymous
 
-App is a single-page tab layout. Visible tabs depend on auth state:
+### Brand & Design System
+
+Brand name: **山景旅宿**. All styles in [frontend/src/index.css](frontend/src/index.css) (no CSS framework). Design tokens defined as CSS Custom Properties in `:root` / `[data-theme="dark"]`:
+- Primary: `#1B2838` (navy), Accent: `#C4A265` (gold), Background: `#F8F6F1` (warm white, light) / `#0F1923` (dark navy, dark)
+- Fonts: Noto Serif TC (headings) + Inter (body) via Google Fonts CDN
+- Light/dark theme toggle with localStorage persistence; index.html inline script prevents flash
+
+### Layout
+
+Sticky top **Navbar** + collapsible left **Sidebar** (replaces previous tab navigation):
+- Navbar: brand name (🏔️ 山景旅宿), theme toggle (🌙/☀️), user info / auth buttons
+- Sidebar: collapsed 60px (icon-only) ↔ expanded 220px (icon + text); state persisted in localStorage
+- Mobile (<768px): Sidebar hidden by default, opens as overlay with backdrop
+- Main content max-width: 1200px
+- Responsive breakpoints: desktop ≥1024px, tablet 768–1023px, mobile <768px
+
+Sidebar nav items depend on auth state:
 - **Anonymous**: 查詢空房
 - **Guest**: 查詢空房, 預訂房間, 我的訂單
-- **Admin**: all guest tabs + 管理後台
+- **Admin**: all guest items + 管理後台
 
-Admin users also see a floating chat widget (bottom-right) for AI customer service.
+Admin users also see a floating chat widget (bottom-right, branded as 「小山 AI 客服」).
 
-Header right side (not tabs): anonymous shows 登入 (outline) + 註冊 (primary) buttons; logged-in shows user name, role badge (admin only), and 登出 button.
+Navbar right side: anonymous shows theme toggle + 登入 + 註冊 buttons; logged-in shows theme toggle + user name, role badge (admin only), and 登出 button.
 
 Pages under [frontend/src/pages/](frontend/src/pages/):
-- `AvailableRooms.jsx` — date search → room grid; clicking a room prefills BookRoom
+- `AvailableRooms.jsx` — CSS gradient Hero section (mountain imagery + brand tagline「寧靜山林間的舒適住所」) → date search → room grid; clicking a room prefills BookRoom
 - `BookRoom.jsx` — booking form; name/email auto-filled from JWT (not editable); accepts `prefill` prop `{ room, checkIn, checkOut }` from AvailableRooms
 - `MyBookings.jsx` — auto-fetches own bookings via JWT cookie on mount; each active booking card has an inline cancel button (uses `window.confirm` + `DELETE /api/bookings/:id`)
 - `Login.jsx` — email + password form

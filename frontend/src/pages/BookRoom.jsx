@@ -71,8 +71,8 @@ export default function BookRoom({ prefill, onBooked }) {
         <div className="alert alert-success">
           <strong>預訂成功！</strong>
         </div>
-        <div style={{ background: '#f8fafc', borderRadius: '8px', padding: '16px', fontSize: '0.9rem', lineHeight: '1.8' }}>
-          <p><strong>訂單編號：</strong><code style={{ background: '#e2e8f0', padding: '2px 6px', borderRadius: '4px', fontSize: '0.85rem' }}>{success.id}</code></p>
+        <div style={{ background: 'var(--color-surface-alt)', borderRadius: '8px', padding: '16px', fontSize: '0.9rem', lineHeight: '1.8' }}>
+          <p><strong>訂單編號：</strong><code style={{ background: 'var(--color-accent-light)', padding: '2px 6px', borderRadius: '4px', fontSize: '0.85rem' }}>{success.id}</code></p>
           <p><strong>房間：</strong>{success.room_number} 號房</p>
           <p><strong>姓名：</strong>{success.guest_name}</p>
           <p><strong>Email：</strong>{success.guest_email}</p>
@@ -80,7 +80,7 @@ export default function BookRoom({ prefill, onBooked }) {
           <p><strong>退房：</strong>{success.check_out}</p>
           {success.notes && <p><strong>備注：</strong>{success.notes}</p>}
         </div>
-        <p style={{ fontSize: '0.85rem', color: '#666', marginTop: '12px' }}>
+        <p style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)', marginTop: '12px' }}>
           請保存訂單編號以便查詢或取消訂單。
         </p>
         <button className="btn btn-primary" style={{ marginTop: '16px' }} onClick={() => setSuccess(null)}>
@@ -93,7 +93,7 @@ export default function BookRoom({ prefill, onBooked }) {
   return (
     <div className="card">
       {user && (
-        <div style={{ background: '#f0f9ff', border: '1px solid #bae6fd', borderRadius: '6px', padding: '10px 14px', marginBottom: '16px', fontSize: '0.9rem' }}>
+        <div style={{ background: 'var(--color-info-bg)', border: '1px solid var(--color-border-light)', borderRadius: '6px', padding: '10px 14px', marginBottom: '16px', fontSize: '0.9rem' }}>
           預訂人：<strong>{user.name}</strong>（{user.email}）
         </div>
       )}
@@ -106,18 +106,18 @@ export default function BookRoom({ prefill, onBooked }) {
               <option key={n} value={n}>{n} 號房</option>
             ))}
           </select>
-          {errors.room_number && <span style={{ color: '#dc2626', fontSize: '0.82rem' }}>{errors.room_number}</span>}
+          {errors.room_number && <span style={{ color: 'var(--color-danger)', fontSize: '0.82rem' }}>{errors.room_number}</span>}
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
           <div className="form-group">
             <label>入住日期 *</label>
             <input type="date" value={form.check_in} min={today} onChange={e => setForm({...form, check_in: e.target.value})} />
-            {errors.check_in && <span style={{ color: '#dc2626', fontSize: '0.82rem' }}>{errors.check_in}</span>}
+            {errors.check_in && <span style={{ color: 'var(--color-danger)', fontSize: '0.82rem' }}>{errors.check_in}</span>}
           </div>
           <div className="form-group">
             <label>退房日期 *</label>
             <input type="date" value={form.check_out} min={form.check_in || today} onChange={e => setForm({...form, check_out: e.target.value})} />
-            {errors.check_out && <span style={{ color: '#dc2626', fontSize: '0.82rem' }}>{errors.check_out}</span>}
+            {errors.check_out && <span style={{ color: 'var(--color-danger)', fontSize: '0.82rem' }}>{errors.check_out}</span>}
           </div>
         </div>
         <div className="form-group">

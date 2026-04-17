@@ -39,7 +39,7 @@ export default function MyBookings() {
 
   if (loading) {
     return (
-      <div className="card" style={{ textAlign: 'center', padding: '40px', color: '#888' }}>
+      <div className="card" style={{ textAlign: 'center', padding: '40px', color: 'var(--color-text-secondary)' }}>
         <span className="spinner" /> 載入中…
       </div>
     );

@@ -33,6 +33,7 @@ context: |
   - 日期以 DATE 型別儲存（YYYY-MM-DD 字串傳入）；overlap 判斷：check_in < existing.check_out AND check_out > existing.check_in
 
   ## Frontend Conventions
+  - 品牌名稱：「山景旅宿」（原「旅館訂房系統」已全面更名）
   - 頁面元件放在 frontend/src/pages/，每個功能頁面一個檔案
   - 共用元件放在 frontend/src/components/（ChatWidget.jsx 等）
   - 全域 auth 狀態由 frontend/src/context/AuthContext.jsx 提供（useAuth hook）
@@ -41,10 +42,23 @@ context: |
   - /api/* 透過 Vite proxy 轉發至 api:3000
   - 表單驗證在前端（UX）與後端（信任邊界）各自獨立進行
   - 繁體中文介面；loading 狀態與錯誤訊息皆以繁體中文呈現
-  - App.jsx 根據 auth 狀態動態顯示 tab：匿名只有「查詢空房」；guest 有「查詢空房、預訂房間、我的訂單」；admin 在 guest tabs 基礎上加「管理後台」
+
+  ## Design System & Layout
+  - CSS Custom Properties 設計系統（`:root` / `[data-theme="dark"]`），所有色彩、字型、間距、陰影、圓角 token 定義於 index.css
+  - 主色：藏青 `#1B2838`，強調色：金色 `#C4A265`，背景：暖白 `#F8F6F1`（light）/ 深藏青 `#0F1923`（dark）
+  - 字型：Noto Serif TC（中文標題）+ Inter（英文/內文），Google Fonts CDN 載入，font-display: swap
+  - 支援 light/dark 主題切換，偏好以 localStorage 持久化；index.html inline script 避免閃爍
+  - 佈局：頂部 sticky Navbar + 左側可收合 Sidebar（預設收合 60px，展開 220px），取代原 tab 導航
+  - Sidebar 收合狀態以 localStorage 持久化；手機版（<768px）Sidebar 為 overlay + 半透明遮罩
+  - 響應式斷點：桌面 ≥1024px、平板 768-1023px、手機 <768px
+  - 主內容區最大寬度 1200px
+  - 「查詢空房」頁面頂部有 CSS 漸層 Hero 區塊（山景意象 + 品牌標語「寧靜山林間的舒適住所」）
+  - 全站卡片使用多層 box-shadow、hover translateY 上浮 + 金色邊框光暈
+  - 表單 input focus 使用金色邊框，按鈕使用 accent 色
+  - Sidebar 導航依角色動態顯示：匿名只有「查詢空房」；guest 有「查詢空房、預訂房間、我的訂單」；admin 加上「管理後台」
   - 取消訂單功能已整合至「我的訂單」頁面（每張 active 訂單卡片上有取消按鈕），無獨立取消分頁
-  - admin 登入後頁面右下角顯示浮動聊天視窗（ChatWidget），支援 AI 客服對話（SSE 串流）
-  - 登入/註冊入口位於 header 右上角（非 tab 列）：未登入時顯示「登入」「註冊」按鈕；已登入時顯示用戶姓名、角色標籤（admin）、登出按鈕
+  - admin 登入後頁面右下角顯示浮動聊天視窗（ChatWidget），支援 AI 客服對話（SSE 串流），品牌名「小山 AI 客服」
+  - Navbar 右側：未登入時顯示主題切換 + 「登入」「註冊」按鈕；已登入時顯示主題切換 + 用戶姓名、角色標籤（admin）、登出按鈕
 
   ## Database Schema
   - users(id UUID PK DEFAULT gen_random_uuid(), email VARCHAR(255) UNIQUE NOT NULL,

@@ -1,6 +1,6 @@
-# AI Booking — Hotel Room Booking System
+# 山景旅宿 — Hotel Room Booking System
 
-A full-stack hotel room booking web app for a 5-room hotel (rooms 101–105). Features user authentication, role-based access control, an admin dashboard, and an AI customer service chatbot powered by Claude + RAG.
+A full-stack hotel room booking web app for a 5-room hotel (rooms 101–105). Features user authentication, role-based access control, an admin dashboard, and an AI customer service chatbot powered by Claude + RAG. The frontend uses a navy + gold design system with Navbar + Sidebar navigation and light/dark theme support.
 
 ## Tech Stack
 
@@ -59,12 +59,20 @@ The database schema and seed data (including the admin account) are applied auto
 - Cancel any booking
 - Manage user accounts (change role, enable/disable)
 - Edit room descriptions
-- AI customer service chatbot (floating chat widget, Claude + RAG)
+- AI customer service chatbot (floating chat widget「小山 AI 客服」, Claude + RAG)
 - Manage knowledge base (CRUD, Markdown import, re-embed)
 
 ### Anonymous visitor
 - Browse available rooms only; all other actions require login
-- Login and Register buttons are in the top-right header
+- Login and Register buttons are in the Navbar (top-right)
+
+### Design & UX
+- Navy (#1B2838) + gold (#C4A265) design system with CSS Custom Properties
+- Light/dark theme toggle with localStorage persistence
+- Sticky Navbar + collapsible Sidebar navigation (replaces tab layout)
+- CSS gradient Hero section on the room search page (mountain imagery)
+- Noto Serif TC + Inter fonts via Google Fonts
+- Responsive: desktop ≥1024px, tablet 768–1023px, mobile <768px
 
 ## Project Structure
 
@@ -91,19 +99,21 @@ The database schema and seed data (including the admin account) are applied auto
 ├── frontend/
 │   └── src/
 │       ├── main.jsx
-│       ├── App.jsx               # Tab layout (per role) + header auth buttons
+│       ├── App.jsx               # Navbar + Sidebar layout + theme toggle
+│       ├── App.css               # Minimal (tokens in index.css)
+│       ├── index.css             # Design system (CSS variables, all styles)
 │       ├── context/
 │       │   └── AuthContext.jsx   # Global auth state (useAuth hook)
 │       ├── components/
-│       │   └── ChatWidget.jsx    # Floating AI chat (admin-only, SSE)
+│       │   └── ChatWidget.jsx    # Floating AI chat「小山 AI 客服」(admin-only, SSE)
 │       ├── pages/
-│       │   ├── AvailableRooms.jsx
+│       │   ├── AvailableRooms.jsx # Hero section + room search
 │       │   ├── BookRoom.jsx
 │       │   ├── MyBookings.jsx    # Includes inline cancel
 │       │   ├── Login.jsx
 │       │   ├── Register.jsx
 │       │   └── AdminDashboard.jsx # 4 sub-tabs incl. knowledge mgmt
-│       └── index.css
+│       └── assets/
 ├── docker/
 │   └── init.sql                  # Schema + seed data (incl. pgvector)
 ├── docker-compose.yml
@@ -145,6 +155,23 @@ The database schema and seed data (including the admin account) are applied auto
 | GET    | `/api/admin/rooms` | List all rooms |
 | PATCH  | `/api/admin/rooms/:room_number` | Update room description |
 
+### Knowledge Base (requires admin role)
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET    | `/api/admin/knowledge` | List all chunks (without embedding) |
+| POST   | `/api/admin/knowledge` | Create chunk; auto-generates embedding |
+| PATCH  | `/api/admin/knowledge/:id` | Update chunk; auto-regenerates embedding |
+| DELETE | `/api/admin/knowledge/:id` | Delete chunk |
+| POST   | `/api/admin/knowledge/import` | Split Markdown by H2; UPSERT on title |
+| POST   | `/api/admin/knowledge/reembed` | Regenerate all embeddings |
+
+### Chat (requires admin role)
+
+| Method | Path | Description |
+|--------|------|-------------|
+| POST   | `/api/chat` | SSE streaming; RAG + Claude + tool use |
+
 All error responses use `{ "error": "<message>" }`.
 
 ## Database Schema
@@ -177,6 +204,15 @@ bookings (
   status        VARCHAR(20) DEFAULT 'active',  -- 'active' | 'cancelled'
   created_at    TIMESTAMPTZ DEFAULT NOW()
 )
+
+knowledge_chunks (
+  id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  title         VARCHAR(200) UNIQUE NOT NULL,
+  content       TEXT,
+  embedding     vector(1536),  -- pgvector; HNSW index (cosine)
+  created_at    TIMESTAMPTZ DEFAULT NOW(),
+  updated_at    TIMESTAMPTZ DEFAULT NOW()
+)
 ```
 
 Date conflict rule: `check_in < existing.check_out AND check_out > existing.check_in` (adjacent bookings are allowed).
@@ -196,4 +232,8 @@ PGADMIN_EMAIL, PGADMIN_PASSWORD
 JWT_SECRET        # Secret key for signing JWT tokens
 JWT_EXPIRES_IN    # Token lifetime, e.g. 7d
 ADMIN_PASSWORD    # Password for the seeded admin@hotel.com account
+
+# AI (for chatbot & knowledge base)
+ANTHROPIC_API_KEY # Claude API key for AI chatbot
+OPENAI_API_KEY    # OpenAI API key for text-embedding-3-small
 ```
